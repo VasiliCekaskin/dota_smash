@@ -150,7 +150,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             50.0,
         ))
         .insert_bundle(SpriteBundle {
-            texture: asset_server.load("sprites/player.png"),
+            texture: asset_server.load("axe_idle.png"),
             ..default()
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
@@ -257,12 +257,12 @@ fn keyboard_input_system(
                 statuses.value.push(StatusTypes::Jumping);
             }
             if keyboard_input.just_pressed(KeyCode::A) {
-                sprite.flip_x = true;
+                sprite.flip_x = false;
                 view_direction.value = ViewDirections::Left;
                 statuses.value.push(StatusTypes::RunLeft);
             }
             if keyboard_input.just_pressed(KeyCode::D) {
-                sprite.flip_x = false;
+                sprite.flip_x = true;
                 view_direction.value = ViewDirections::Right;
                 statuses.value.push(StatusTypes::RunRight);
             }
