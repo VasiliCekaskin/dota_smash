@@ -19,9 +19,9 @@ const WINDOW_HEIGHT: f32 = 1080.0;
 const GAME_LOOP_UPDATE_RATE: u64 = 10;
 const PLAYER_ACCELERATION: f32 = 1.0;
 const PLAYER_DECELERATION: f32 = 0.5;
-const PLAYER_MAX_SPEED: f32 = 10.0;
-const PLAYER_MAX_JUMP_SPEED: f32 = 20.0;
-const PLAYER_JUMP_DECELERATION: f32 = 2.0;
+const PLAYER_MAX_SPEED: f32 = 5.0;
+const PLAYER_MAX_JUMP_SPEED: f32 = 40.0;
+const PLAYER_JUMP_DECELERATION: f32 = 3.0;
 
 #[derive(Component)]
 struct Platform;
@@ -88,6 +88,9 @@ pub fn app() -> App {
     game_loop.add_system(teleport_wall_system);
     game_loop.add_system(move_player_system);
 
+    // DEV tools
+    game_loop.add_system(_dev_tp_player_to_start_system);
+
     let mut app = App::new();
 
     app.insert_resource(WindowDescriptor {
@@ -98,7 +101,7 @@ pub fn app() -> App {
     })
     .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
     .add_plugins(DefaultPlugins)
-    .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(100.0))
+    .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(50.0))
     .add_plugin(RapierDebugRenderPlugin::default())
     .add_startup_system(setup)
     .add_system(bevy::window::close_on_esc)
@@ -143,10 +146,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             value: PLAYER_MAX_JUMP_SPEED,
         })
         .insert(RigidBody::Dynamic)
+        .insert(GravityScale(10.0))
         .insert(LockedAxes::ROTATION_LOCKED)
         .insert(Collider::capsule(
-            Vec2::new(50.0, 100.0),
-            Vec2::new(50.0, 100.0),
+            Vec2::new(0.0, 10.0),
+            Vec2::new(0.0, 0.0),
             50.0,
         ))
         .insert_bundle(SpriteBundle {
@@ -154,9 +158,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             ..default()
         })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
-            0.0,
-            -(WINDOW_HEIGHT / 2.0) + 25.0,
-            0.0,
+            0.0, 0.0, 0.0,
         )));
 
     // Platform
@@ -165,10 +167,51 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Platform)
         .insert(RigidBody::Fixed)
         .insert(Collider::cuboid(200.0, 50.0))
-        .insert_bundle(SpriteBundle {
-            texture: asset_server.load("sprites/platform.png"),
-            ..default()
-        });
+        // .insert_bundle(SpriteBundle {
+        //     texture: asset_server.load("sprites/platform.png"),
+        //     ..default()
+        // })
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(
+            0.0, -200.0, 0.0,
+        )));
+
+    commands
+        .spawn()
+        .insert(Platform)
+        .insert(RigidBody::Fixed)
+        .insert(Collider::cuboid(100.0, 20.0))
+        // .insert_bundle(SpriteBundle {
+        //     texture: asset_server.load("sprites/platform.png"),
+        //     ..default()
+        // })
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(
+            -300.0, 80.0, 0.0,
+        )));
+
+    commands
+        .spawn()
+        .insert(Platform)
+        .insert(RigidBody::Fixed)
+        .insert(Collider::cuboid(100.0, 20.0))
+        // .insert_bundle(SpriteBundle {
+        //     texture: asset_server.load("sprites/platform.png"),
+        //     ..default()
+        // })
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(
+            400.0, -50.0, 0.0,
+        )));
+}
+
+fn _dev_tp_player_to_start_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<(&Player, &mut Transform)>,
+) {
+    if (keyboard_input.just_pressed(KeyCode::R)) {
+        for (_, mut transform) in &mut query {
+            transform.translation.x = 0.0;
+            transform.translation.y = 0.0;
+        }
+    }
 }
 
 fn teleport_wall_system(mut query: Query<(&Player, &mut Transform)>) {
