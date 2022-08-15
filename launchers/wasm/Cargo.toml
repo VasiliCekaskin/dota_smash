@@ -5,8 +5,10 @@ edition = "2021"
 workspace = "../.."
 
 [dependencies]
-my-game = { package = "my-game", path = "../.." }
+dota_smash = { package = "dota_smash", path = "../.." }
 bevy = "0.8"
 web-sys = { version="0.3.59", features=["Document", "Window"] }
 yew = "0.19.3"
 stylist = { version= "0.10.1", features=["yew_integration"] }
+iyes_loopless = "0.7.0"
+bevy_rapier2d = { version = "*", features = [ "simd-stable", "debug-render" ] }
