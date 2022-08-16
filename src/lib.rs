@@ -198,6 +198,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         //     ..default()
         // })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
+            -300.0, 230.0, 0.0,
+        )));
+
+    commands
+        .spawn()
+        .insert(Platform)
+        .insert(RigidBody::Fixed)
+        .insert(Collider::cuboid(100.0, 20.0))
+        // .insert_bundle(SpriteBundle {
+        //     texture: asset_server.load("sprites/platform.png"),
+        //     ..default()
+        // })
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(
             400.0, -50.0, 0.0,
         )));
 }
