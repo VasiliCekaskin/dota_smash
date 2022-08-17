@@ -1,9 +1,9 @@
 use bevy_rapier2d::prelude::*;
-use std::time::Duration;
+use std::{ptr::null, time::Duration};
 
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    input::{keyboard::KeyCode, Input},
+    input::{gamepad::GamepadButton, keyboard::KeyCode, Input},
     prelude::*,
     render::render_resource::{
         DepthStencilState, RenderPassDepthStencilAttachment,
@@ -18,7 +18,7 @@ const WINDOW_HEIGHT: f32 = 1080.0;
 
 const GAME_LOOP_UPDATE_RATE: u64 = 10;
 const PLAYER_ACCELERATION: f32 = 1.0;
-const PLAYER_DECELERATION: f32 = 0.5;
+const PLAYER_DECELERATION: f32 = 2.0;
 const PLAYER_MAX_SPEED: f32 = 5.0;
 const PLAYER_MAX_JUMP_SPEED: f32 = 40.0;
 const PLAYER_JUMP_DECELERATION: f32 = 3.0;
@@ -95,6 +95,8 @@ pub fn app() -> App {
 
     app.insert_resource(WindowDescriptor {
         title: LAUNCHER_TITLE.to_string(),
+        width: WINDOW_WIDTH,
+        height: WINDOW_HEIGHT,
         canvas: Some("#bevy".to_string()),
         fit_canvas_to_parent: true,
         ..Default::default()
@@ -106,6 +108,8 @@ pub fn app() -> App {
     .add_startup_system(setup)
     .add_system(bevy::window::close_on_esc)
     .add_system(keyboard_input_system)
+    .add_system(gamepad_system)
+    .add_system(move_camera)
     .add_stage_before(
         CoreStage::Update,
         "game_loop",
@@ -333,5 +337,154 @@ fn keyboard_input_system(
         }
 
         statuses.value.dedup();
+    }
+}
+
+// fn gamepad_system(
+//     gamepads: Res<Gamepads>,
+//     button_inputs: Res<Input<GamepadButton>>,
+//     button_axes: Res<Axis<GamepadButton>>,
+//     axes: Res<Axis<GamepadAxis>>,
+//     mut query: Query<(&Player, &mut Statuses, &mut ViewDirection, &mut Sprite)>,
+// ) {
+//     for gamepad in gamepads.iter().cloned() {
+//         for (player, mut statuses, mut view_direction, mut sprite) in &mut query
+//         {
+//             if button_inputs.just_pressed(GamepadButton {
+//                 gamepad,
+//                 button_type: GamepadButtonType::West,
+//             }) {
+//                 if statuses.value.contains(&StatusTypes::Jumping) {
+//                     return;
+//                 }
+
+//                 statuses.value.push(StatusTypes::Jumping);
+//             }
+
+//             if button_inputs.just_pressed(GamepadButton {
+//                 gamepad,
+//                 button_type: GamepadButtonType::North,
+//             }) {
+//                 sprite.flip_x = false;
+//                 view_direction.value = ViewDirections::Left;
+//                 statuses.value.push(StatusTypes::RunLeft);
+//             }
+//             if button_inputs.just_pressed(GamepadButton {
+//                 gamepad,
+//                 button_type: GamepadButtonType::East,
+//             }) {
+//                 sprite.flip_x = true;
+//                 view_direction.value = ViewDirections::Right;
+//                 statuses.value.push(StatusTypes::RunRight);
+//             }
+
+//             if button_inputs.just_released(GamepadButton {
+//                 gamepad,
+//                 button_type: GamepadButtonType::North,
+//             }) {
+//                 statuses.remove_status(&StatusTypes::RunLeft);
+//                 statuses.value.push(StatusTypes::Deceleration);
+//             }
+
+//             if button_inputs.just_released(GamepadButton {
+//                 gamepad,
+//                 button_type: GamepadButtonType::East,
+//             }) {
+//                 statuses.remove_status(&StatusTypes::RunRight);
+//                 statuses.value.push(StatusTypes::Deceleration);
+//             }
+
+//             statuses.value.dedup();
+//         }
+//     }
+// }
+
+fn gamepad_system(
+    gamepads: Res<Gamepads>,
+    button_inputs: Res<Input<GamepadButton>>,
+    button_axes: Res<Axis<GamepadButton>>,
+    axes: Res<Axis<GamepadAxis>>,
+    mut query: Query<(&Player, &mut Statuses, &mut ViewDirection, &mut Sprite)>,
+) {
+    for gamepad in gamepads.iter().cloned() {
+        for (player, mut statuses, mut view_direction, mut sprite) in &mut query
+        {
+            if button_inputs.just_pressed(GamepadButton {
+                gamepad,
+                button_type: GamepadButtonType::West,
+            }) {
+                if statuses.value.contains(&StatusTypes::Jumping) {
+                    return;
+                }
+
+                statuses.value.push(StatusTypes::Jumping);
+            }
+
+            if button_inputs.just_pressed(GamepadButton {
+                gamepad,
+                button_type: GamepadButtonType::LeftTrigger,
+            }) {
+                sprite.flip_x = false;
+                view_direction.value = ViewDirections::Left;
+                statuses.value.push(StatusTypes::RunLeft);
+            }
+            if button_inputs.just_pressed(GamepadButton {
+                gamepad,
+                button_type: GamepadButtonType::RightTrigger,
+            }) {
+                sprite.flip_x = true;
+                view_direction.value = ViewDirections::Right;
+                statuses.value.push(StatusTypes::RunRight);
+            }
+
+            if button_inputs.just_released(GamepadButton {
+                gamepad,
+                button_type: GamepadButtonType::LeftTrigger,
+            }) {
+                statuses.remove_status(&StatusTypes::RunLeft);
+                statuses.value.push(StatusTypes::Deceleration);
+            }
+
+            if button_inputs.just_released(GamepadButton {
+                gamepad,
+                button_type: GamepadButtonType::RightTrigger,
+            }) {
+                statuses.remove_status(&StatusTypes::RunRight);
+                statuses.value.push(StatusTypes::Deceleration);
+            }
+
+            statuses.value.dedup();
+        }
+    }
+}
+
+fn move_camera(
+    mut query: Query<(Option<&Player>, Option<&Camera>, &mut Transform)>,
+) {
+    let mut entities = vec![];
+
+    for (player, camera, mut transform) in query.iter_mut() {
+        entities.push((player, camera, transform));
+    }
+
+    let mut player_translation: Vec3 = Vec3::default();
+
+    for entity in entities {
+        let player = entity.0;
+        let camera = entity.1;
+
+        // Get player translation
+        if let Some(_) = player {
+            let transform = entity.2;
+            player_translation = transform.translation;
+            continue;
+        }
+
+        // Move camera
+        if let Some(_) = camera {
+            let mut camera_transform = entity.2;
+            camera_transform.translation = player_translation;
+            continue;
+        }
     }
 }
