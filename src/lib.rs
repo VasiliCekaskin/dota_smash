@@ -13,6 +13,9 @@ use bevy::{
 };
 use iyes_loopless::prelude::FixedTimestepStage;
 
+mod entities;
+use entities::player;
+
 const WINDOW_WIDTH: f32 = 1920.0;
 const WINDOW_HEIGHT: f32 = 1080.0;
 
