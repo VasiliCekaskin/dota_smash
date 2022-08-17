@@ -3,6 +3,7 @@ use bevy_rapier2d::prelude::*;
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
+    render::camera::{CameraProjection, Projection, ScalingMode, Viewport},
 };
 
 mod entities;
@@ -48,13 +49,21 @@ pub fn app() -> App {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    let mut camera_2d_bundle = Camera2dBundle::default();
+
+    camera_2d_bundle.projection.scale = 3.0;
+
+    commands.spawn_bundle(camera_2d_bundle);
 
     // ground
     commands
         .spawn()
         .insert(RigidBody::Fixed)
         .insert(Collider::cuboid(WINDOW_WIDTH, 50.0))
+        .insert(Friction {
+            coefficient: 0.0,
+            ..Default::default()
+        })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
             0.0, 2200.0, 0.0,
         )));
@@ -65,10 +74,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Platform)
         .insert(RigidBody::Fixed)
         .insert(Collider::cuboid(200.0, 50.0))
-        // .insert_bundle(SpriteBundle {
-        //     texture: asset_server.load("sprites/platform.png"),
-        //     ..default()
-        // })
+        .insert(Friction {
+            coefficient: 0.0,
+            ..Default::default()
+        })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
             0.0, -200.0, 0.0,
         )));
@@ -78,10 +87,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Platform)
         .insert(RigidBody::Fixed)
         .insert(Collider::cuboid(100.0, 20.0))
-        // .insert_bundle(SpriteBundle {
-        //     texture: asset_server.load("sprites/platform.png"),
-        //     ..default()
-        // })
+        .insert(Friction {
+            coefficient: 0.0,
+            ..Default::default()
+        })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
             -300.0, 80.0, 0.0,
         )));
@@ -91,10 +100,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Platform)
         .insert(RigidBody::Fixed)
         .insert(Collider::cuboid(100.0, 20.0))
-        // .insert_bundle(SpriteBundle {
-        //     texture: asset_server.load("sprites/platform.png"),
-        //     ..default()
-        // })
+        .insert(Friction {
+            coefficient: 0.0,
+            ..Default::default()
+        })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
             -300.0, 230.0, 0.0,
         )));
@@ -104,10 +113,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         .insert(Platform)
         .insert(RigidBody::Fixed)
         .insert(Collider::cuboid(100.0, 20.0))
-        // .insert_bundle(SpriteBundle {
-        //     texture: asset_server.load("sprites/platform.png"),
-        //     ..default()
-        // })
+        .insert(Friction {
+            coefficient: 0.0,
+            ..Default::default()
+        })
         .insert_bundle(TransformBundle::from(Transform::from_xyz(
             400.0, -50.0, 0.0,
         )));

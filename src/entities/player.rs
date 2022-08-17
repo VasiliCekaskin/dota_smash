@@ -2,13 +2,13 @@ use bevy::{
     input::keyboard::KeyboardInput,
     prelude::{
         AssetServer, Commands, Component, EventReader, EventWriter, KeyCode,
-        Plugin, Query, Res, Transform, Vec2, With,
+        Plugin, Query, Res, Transform, Vec2,
     },
     sprite::{Sprite, SpriteBundle},
     transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::{
-    Collider, GravityScale, LockedAxes, RigidBody, Velocity,
+    Collider, Friction, GravityScale, LockedAxes, RigidBody, Velocity,
 };
 
 use crate::resources::game_config::GameConfig;
@@ -73,14 +73,14 @@ fn setup(
                 view_direction: ViewDirection::Left,
             })
             .insert(RigidBody::Dynamic)
+            .insert(Friction {
+                coefficient: 0.0,
+                ..Default::default()
+            })
             .insert(Velocity::default())
             .insert(GravityScale(10.0))
             .insert(LockedAxes::ROTATION_LOCKED)
-            .insert(Collider::capsule(
-                Vec2::new(0.0, 10.0),
-                Vec2::new(0.0, 0.0),
-                50.0,
-            ))
+            .insert(Collider::cuboid(50.0, 50.0))
             .insert_bundle(SpriteBundle {
                 texture: asset_server.load("axe_idle.png"),
                 ..Default::default()
@@ -157,7 +157,7 @@ fn keyboard_events(
 
 fn move_player_event_system(
     mut move_player_evr: EventReader<MovePlayerEvent>,
-    mut query: Query<&mut Player>,
+    mut query: Query<(&mut Player)>,
 ) {
     for move_player_event in move_player_evr.iter() {
         for (mut player) in query.iter_mut() {
