@@ -8,103 +8,17 @@ use bevy::{
 mod entities;
 use entities::player::PlayerPlugin;
 
+mod resources;
+use resources::game_config::GameConfig;
+use resources::game_state::GameState;
+
 const WINDOW_WIDTH: f32 = 1920.0;
 const WINDOW_HEIGHT: f32 = 1080.0;
-
-////////////////////////////////////////////////////////////////
-// This must come into it's own modules later
-
-const PLAYER_MAX_COUNT: u32 = 2;
-const PLAYER_MOVEMENT_TRANSLATION_VECTOR: Vec2 = Vec2 { x: 1.0, y: 1.0 };
-const PLAYER_MAX_MOVEMENT_SPEED: f32 = 20.0;
-const PLAYER_ACCELERATION: Vec2 = Vec2 {
-    x: PLAYER_MAX_MOVEMENT_SPEED,
-    y: 0.0,
-};
-
-struct GameConfig {
-    player_max_count: u32,
-    player_movement_translation_vector: Vec2,
-    player_max_movement_speed: f32,
-    player_acceleration: Vec2,
-}
-impl Default for GameConfig {
-    fn default() -> Self {
-        Self {
-            player_max_count: PLAYER_MAX_COUNT,
-            player_movement_translation_vector:
-                PLAYER_MOVEMENT_TRANSLATION_VECTOR,
-            player_max_movement_speed: PLAYER_MAX_MOVEMENT_SPEED,
-            player_acceleration: PLAYER_ACCELERATION,
-        }
-    }
-}
-
-struct GameState {
-    current_player_count: u32,
-}
-impl Default for GameState {
-    fn default() -> Self {
-        Self {
-            current_player_count: 0,
-        }
-    }
-}
-////////////////////////////////////////////////////////////////
 
 #[derive(Component)]
 struct Platform;
 
-#[derive(Component)]
-struct Speed {
-    value: f32,
-}
-
-#[derive(Component)]
-struct JumpSpeed {
-    value: f32,
-}
-
-#[derive(PartialEq, Debug, Clone, Copy)]
-enum StatusTypes {
-    Idle,
-    RunLeft,
-    RunRight,
-    Jumping,
-    Deceleration,
-}
-#[derive(Component)]
-struct Statuses {
-    value: Vec<StatusTypes>,
-}
-
-impl Statuses {
-    fn add_status(&mut self, status_type: &StatusTypes) {
-        self.value.push(*status_type);
-        self.value.dedup();
-    }
-
-    fn remove_status(&mut self, status_type: &StatusTypes) {
-        if let Some(index) =
-            self.value.iter().position(|status| status == status_type)
-        {
-            self.value.swap_remove(index);
-        }
-    }
-}
-
-#[derive(PartialEq)]
-enum ViewDirections {
-    Left,
-    Right,
-}
-
-#[derive(Component)]
-struct ViewDirection {
-    value: ViewDirections,
-}
-
-pub const LAUNCHER_TITLE: &str = "Bevy Shell - Template";
+pub const LAUNCHER_TITLE: &str = "Dota Smash";
 
 pub fn app() -> App {
     let mut app = App::new();
