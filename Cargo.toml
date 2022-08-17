@@ -26,3 +26,4 @@ image = "0.24.3"
 winit = "0.26.1"
 iyes_loopless = "0.7.0"
 bevy_rapier2d = { version = "*", features = [ "simd-stable", "debug-render" ] }
+bevy_prototype_lyon = "*"

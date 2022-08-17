@@ -1,23 +1,25 @@
-use bevy_rapier2d::prelude::*;
-
-use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::*,
-    render::camera::{CameraProjection, Projection, ScalingMode, Viewport},
+use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
+use bevy::prelude::{
+    App, Camera2dBundle, ClearColor, Color, Commands, OrthographicProjection,
 };
+use bevy::window::WindowDescriptor;
+use bevy::DefaultPlugins;
+use bevy_prototype_lyon::prelude::ShapePlugin;
+use bevy_rapier2d::prelude::{NoUserData, RapierPhysicsPlugin};
+use bevy_rapier2d::render::RapierDebugRenderPlugin;
 
 mod entities;
+mod fireball;
 use entities::player::PlayerPlugin;
-
 mod resources;
+use fireball::FireballPlugin;
 use resources::game_config::GameConfig;
 use resources::game_state::GameState;
+mod maps;
+use maps::map_one::MapOnePlugin;
 
 const WINDOW_WIDTH: f32 = 1920.0;
 const WINDOW_HEIGHT: f32 = 1080.0;
-
-#[derive(Component)]
-struct Platform;
 
 pub const LAUNCHER_TITLE: &str = "Dota Smash";
 
@@ -36,11 +38,14 @@ pub fn app() -> App {
     .insert_resource(GameState::default())
     .insert_resource(GameConfig::default())
     .add_plugins(DefaultPlugins)
-    .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(50.0))
-    .add_plugin(RapierDebugRenderPlugin::default())
-    .add_plugin(LogDiagnosticsPlugin::default())
-    .add_plugin(FrameTimeDiagnosticsPlugin::default())
-    .add_startup_system(setup)
+    .add_plugin(ShapePlugin)
+    .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
+    // .add_plugin(RapierDebugRenderPlugin::default())
+    // .add_plugin(LogDiagnosticsPlugin::default())
+    // .add_plugin(FrameTimeDiagnosticsPlugin::default())
+    .add_startup_system(setup_camera)
+    .add_plugin(MapOnePlugin)
+    .add_plugin(FireballPlugin)
     .add_plugin(PlayerPlugin)
     .add_system(bevy::window::close_on_esc)
     .run();
@@ -48,76 +53,12 @@ pub fn app() -> App {
     return app;
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let mut camera_2d_bundle = Camera2dBundle::default();
-
-    camera_2d_bundle.projection.scale = 3.0;
-
-    commands.spawn_bundle(camera_2d_bundle);
-
-    // ground
-    commands
-        .spawn()
-        .insert(RigidBody::Fixed)
-        .insert(Collider::cuboid(WINDOW_WIDTH, 50.0))
-        .insert(Friction {
-            coefficient: 0.0,
+fn setup_camera(mut commands: Commands) {
+    commands.spawn_bundle(Camera2dBundle {
+        projection: OrthographicProjection {
+            scale: 3.0,
             ..Default::default()
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(
-            0.0, 2200.0, 0.0,
-        )));
-
-    // Platform
-    commands
-        .spawn()
-        .insert(Platform)
-        .insert(RigidBody::Fixed)
-        .insert(Collider::cuboid(200.0, 50.0))
-        .insert(Friction {
-            coefficient: 0.0,
-            ..Default::default()
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(
-            0.0, -200.0, 0.0,
-        )));
-
-    commands
-        .spawn()
-        .insert(Platform)
-        .insert(RigidBody::Fixed)
-        .insert(Collider::cuboid(100.0, 20.0))
-        .insert(Friction {
-            coefficient: 0.0,
-            ..Default::default()
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(
-            -300.0, 80.0, 0.0,
-        )));
-
-    commands
-        .spawn()
-        .insert(Platform)
-        .insert(RigidBody::Fixed)
-        .insert(Collider::cuboid(100.0, 20.0))
-        .insert(Friction {
-            coefficient: 0.0,
-            ..Default::default()
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(
-            -300.0, 230.0, 0.0,
-        )));
-
-    commands
-        .spawn()
-        .insert(Platform)
-        .insert(RigidBody::Fixed)
-        .insert(Collider::cuboid(100.0, 20.0))
-        .insert(Friction {
-            coefficient: 0.0,
-            ..Default::default()
-        })
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(
-            400.0, -50.0, 0.0,
-        )));
+        },
+        ..Default::default()
+    });
 }

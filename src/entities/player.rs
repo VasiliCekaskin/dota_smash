@@ -1,8 +1,9 @@
+use crate::fireball::Fireball;
 use bevy::{
     input::keyboard::KeyboardInput,
     prelude::{
         AssetServer, Commands, Component, EventReader, EventWriter, KeyCode,
-        Plugin, Query, Res, Transform, Vec2,
+        Plugin, Query, Res, ResMut, Transform, Vec2,
     },
     sprite::{Sprite, SpriteBundle},
     transform::TransformBundle,
@@ -19,30 +20,32 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_event::<MovePlayerEvent>()
             .add_event::<PlayerJumpEvent>()
+            .add_event::<PlayerAttackEvent>()
             .add_startup_system(setup)
             .add_system(keyboard_events)
             .add_system(move_player_event_system)
             .add_system(move_player_system)
             .add_system(jump_player_event_system)
             .add_system(state_management_system)
+            .add_system(attack_player_event_system)
             .add_system(flip_player_system);
     }
 }
 
 #[derive(PartialEq)]
-enum ViewDirection {
+pub enum ViewDirection {
     Left,
     Right,
 }
 
 #[derive(Component)]
-struct Player {
-    id: usize,
+pub struct Player {
+    pub id: usize,
     acceleration: Vec2,
     is_jumping: bool,
     is_double_jumping: bool,
     is_falling: bool,
-    view_direction: ViewDirection,
+    pub view_direction: ViewDirection,
 }
 
 struct MovePlayerEvent {
@@ -53,6 +56,10 @@ struct MovePlayerEvent {
 struct PlayerJumpEvent {
     player_id: usize,
     translation: Vec2,
+}
+
+struct PlayerAttackEvent {
+    player_id: usize,
 }
 
 fn setup(
@@ -93,8 +100,9 @@ fn setup(
 
 fn keyboard_events(
     mut keyboard_input_evr: EventReader<KeyboardInput>,
-    mut move_player_event_wr: EventWriter<MovePlayerEvent>,
-    mut player_jump_event_wr: EventWriter<PlayerJumpEvent>,
+    mut move_player_ewr: EventWriter<MovePlayerEvent>,
+    mut player_jump_ewr: EventWriter<PlayerJumpEvent>,
+    mut player_attack_ewr: EventWriter<PlayerAttackEvent>,
     game_config: Res<GameConfig>,
 ) {
     use bevy::input::ButtonState;
@@ -102,53 +110,44 @@ fn keyboard_events(
     for keyboard_input in keyboard_input_evr.iter() {
         match keyboard_input.state {
             ButtonState::Pressed => match keyboard_input.key_code {
-                Some(KeyCode::A) => {
-                    move_player_event_wr.send(MovePlayerEvent {
-                        player_id: 1,
-                        translation: Vec2 {
-                            x: -game_config
-                                .player_movement_translation_vector
-                                .x
-                                * game_config.player_acceleration.x,
-                            y: 0.0,
-                        },
-                    })
-                }
-                Some(KeyCode::D) => {
-                    move_player_event_wr.send(MovePlayerEvent {
-                        player_id: 1,
-                        translation: Vec2 {
-                            x: game_config.player_movement_translation_vector.x
-                                * game_config.player_acceleration.x,
-                            y: 0.0,
-                        },
-                    })
-                }
-                Some(KeyCode::W) => {
-                    player_jump_event_wr.send(PlayerJumpEvent {
-                        player_id: 1,
-                        translation: Vec2 {
-                            x: 0.0,
-                            y: game_config.player_movement_translation_vector.y
-                                * game_config.player_acceleration.y,
-                        },
-                    })
+                Some(KeyCode::A) => move_player_ewr.send(MovePlayerEvent {
+                    player_id: 1,
+                    translation: Vec2 {
+                        x: -game_config.player_movement_translation_vector.x
+                            * game_config.player_acceleration.x,
+                        y: 0.0,
+                    },
+                }),
+                Some(KeyCode::D) => move_player_ewr.send(MovePlayerEvent {
+                    player_id: 1,
+                    translation: Vec2 {
+                        x: game_config.player_movement_translation_vector.x
+                            * game_config.player_acceleration.x,
+                        y: 0.0,
+                    },
+                }),
+                Some(KeyCode::W) => player_jump_ewr.send(PlayerJumpEvent {
+                    player_id: 1,
+                    translation: Vec2 {
+                        x: 0.0,
+                        y: game_config.player_movement_translation_vector.y
+                            * game_config.player_acceleration.y,
+                    },
+                }),
+                Some(KeyCode::Space) => {
+                    player_attack_ewr.send(PlayerAttackEvent { player_id: 1 })
                 }
                 _ => (),
             },
             ButtonState::Released => match keyboard_input.key_code {
-                Some(KeyCode::A) => {
-                    move_player_event_wr.send(MovePlayerEvent {
-                        player_id: 1,
-                        translation: Vec2 { x: 0.0, y: 0.0 },
-                    })
-                }
-                Some(KeyCode::D) => {
-                    move_player_event_wr.send(MovePlayerEvent {
-                        player_id: 1,
-                        translation: Vec2 { x: 0.0, y: 0.0 },
-                    })
-                }
+                Some(KeyCode::A) => move_player_ewr.send(MovePlayerEvent {
+                    player_id: 1,
+                    translation: Vec2 { x: 0.0, y: 0.0 },
+                }),
+                Some(KeyCode::D) => move_player_ewr.send(MovePlayerEvent {
+                    player_id: 1,
+                    translation: Vec2 { x: 0.0, y: 0.0 },
+                }),
                 _ => (),
             },
         }
@@ -215,6 +214,26 @@ fn jump_player_event_system(
                     velocity.linvel.y = player_jump_event.translation.y;
                     player.is_double_jumping = true;
                 }
+            }
+        }
+    }
+}
+
+fn attack_player_event_system(
+    mut commands: Commands,
+    mut player_attack_er: EventReader<PlayerAttackEvent>,
+    mut asset_server: ResMut<AssetServer>,
+    query: Query<(&Player, &Transform)>,
+) {
+    for player_attack_event in player_attack_er.iter() {
+        for (player, transform) in query.iter() {
+            if (player_attack_event.player_id == player.id) {
+                Fireball::new_for_player(
+                    player,
+                    transform,
+                    &mut commands,
+                    &mut asset_server,
+                );
             }
         }
     }
