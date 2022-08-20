@@ -1,11 +1,17 @@
 use crate::fireball::Fireball;
 use bevy::{
     input::keyboard::KeyboardInput,
+    prelude::Timer,
     prelude::{
-        AssetServer, Commands, Component, EventReader, EventWriter, KeyCode,
-        Plugin, Query, Res, ResMut, Transform, Vec2, Vec3,
+        AssetServer, Assets, Commands, Component, Deref, DerefMut, EventReader,
+        EventWriter, Handle, KeyCode, Plugin, Query, Res, ResMut, Transform,
+        Vec2, Vec3,
     },
-    sprite::{Sprite, SpriteBundle},
+    sprite::{
+        Sprite, SpriteBundle, SpriteSheetBundle, TextureAtlas,
+        TextureAtlasSprite,
+    },
+    time::Time,
     transform::TransformBundle,
 };
 use bevy_rapier2d::prelude::{
@@ -28,7 +34,8 @@ impl Plugin for PlayerPlugin {
             .add_system(jump_player_event_system)
             .add_system(state_management_system)
             .add_system(attack_player_event_system)
-            .add_system(flip_player_system);
+            .add_system(flip_player_system)
+            .add_system(animate);
     }
 }
 
@@ -36,6 +43,11 @@ impl Plugin for PlayerPlugin {
 pub enum ViewDirection {
     Left,
     Right,
+}
+
+pub enum AnimationState {
+    Idle,
+    Running,
 }
 
 #[derive(Component)]
@@ -46,6 +58,7 @@ pub struct Player {
     is_double_jumping: bool,
     is_falling: bool,
     pub view_direction: ViewDirection,
+    pub animation_state: AnimationState,
 }
 
 struct MovePlayerEvent {
@@ -65,9 +78,15 @@ struct PlayerAttackEvent {
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     game_config: Res<GameConfig>,
     game_state: Res<GameState>,
 ) {
+    let texture_handle = asset_server.load("venomancer_running.png");
+    let texture_atlas =
+        TextureAtlas::from_grid(texture_handle, Vec2::new(100.0, 100.0), 5, 1);
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+
     if game_config.player_max_count > game_state.current_player_count {
         commands
             .spawn()
@@ -78,6 +97,7 @@ fn setup(
                 is_double_jumping: false,
                 is_falling: false,
                 view_direction: ViewDirection::Left,
+                animation_state: AnimationState::Idle,
             })
             .insert(RigidBody::Dynamic)
             .insert(Friction {
@@ -88,10 +108,11 @@ fn setup(
             .insert(GravityScale(10.0))
             .insert(LockedAxes::ROTATION_LOCKED)
             .insert(Collider::cuboid(50.0, 50.0))
-            .insert_bundle(SpriteBundle {
-                texture: asset_server.load("venomancer.png"),
+            .insert_bundle(SpriteSheetBundle {
+                texture_atlas: texture_atlas_handle,
                 ..Default::default()
             })
+            .insert(AnimationTimer(Timer::from_seconds(0.15, true)))
             .insert_bundle(TransformBundle::from(
                 Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3 {
                     x: 2.0,
@@ -99,6 +120,28 @@ fn setup(
                     z: 1.0,
                 }),
             ));
+    }
+}
+#[derive(Component, Deref, DerefMut)]
+struct AnimationTimer(Timer);
+
+fn animate(
+    time: Res<Time>,
+    texture_atlases: Res<Assets<TextureAtlas>>,
+    mut query: Query<(
+        &mut AnimationTimer,
+        &mut TextureAtlasSprite,
+        &Handle<TextureAtlas>,
+    )>,
+) {
+    for (mut timer, mut sprite, texture_atlas_handle) in &mut query {
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            println!("JAAAAAAAAAAAAAAA");
+            let texture_atlas =
+                texture_atlases.get(texture_atlas_handle).unwrap();
+            sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+        }
     }
 }
 
@@ -243,7 +286,7 @@ fn attack_player_event_system(
     }
 }
 
-fn flip_player_system(mut query: Query<(&Player, &mut Sprite)>) {
+fn flip_player_system(mut query: Query<(&Player, &mut TextureAtlasSprite)>) {
     for (player, mut sprite) in query.iter_mut() {
         if player.view_direction == ViewDirection::Left {
             sprite.flip_x = true;
