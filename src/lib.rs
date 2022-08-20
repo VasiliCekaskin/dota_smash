@@ -8,13 +8,18 @@ use bevy_prototype_lyon::prelude::ShapePlugin;
 use bevy_rapier2d::prelude::{NoUserData, RapierPhysicsPlugin};
 use bevy_rapier2d::render::RapierDebugRenderPlugin;
 
+mod networking;
+
 mod entities;
+
 mod fireball;
 use entities::player::PlayerPlugin;
+
 mod resources;
 use fireball::FireballPlugin;
 use resources::game_config::GameConfig;
 use resources::game_state::GameState;
+
 mod maps;
 use maps::map_one::MapOnePlugin;
 
@@ -38,6 +43,7 @@ pub fn app() -> App {
     .insert_resource(GameState::default())
     .insert_resource(GameConfig::default())
     .add_plugins(DefaultPlugins)
+    .add_plugin(networking::setup::NetworkingPlugin)
     .add_plugin(ShapePlugin)
     .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
     // .add_plugin(RapierDebugRenderPlugin::default())
