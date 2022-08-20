@@ -7,10 +7,7 @@ use bevy::{
         EventWriter, Handle, KeyCode, Plugin, Query, Res, ResMut, Transform,
         Vec2, Vec3,
     },
-    sprite::{
-        Sprite, SpriteBundle, SpriteSheetBundle, TextureAtlas,
-        TextureAtlasSprite,
-    },
+    sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite},
     time::Time,
     transform::TransformBundle,
 };
@@ -30,7 +27,6 @@ impl Plugin for PlayerPlugin {
             .add_startup_system(setup)
             .add_system(keyboard_events)
             .add_system(move_player_event_system)
-            .add_system(move_player_system)
             .add_system(jump_player_event_system)
             .add_system(state_management_system)
             .add_system(attack_player_event_system)
@@ -45,6 +41,7 @@ pub enum ViewDirection {
     Right,
 }
 
+#[derive(PartialEq)]
 pub enum AnimationState {
     Idle,
     Running,
@@ -129,17 +126,23 @@ fn animate(
     time: Res<Time>,
     texture_atlases: Res<Assets<TextureAtlas>>,
     mut query: Query<(
+        &Player,
         &mut AnimationTimer,
         &mut TextureAtlasSprite,
         &Handle<TextureAtlas>,
     )>,
 ) {
-    for (mut timer, mut sprite, texture_atlas_handle) in &mut query {
-        timer.tick(time.delta());
-        if timer.just_finished() {
-            let texture_atlas =
-                texture_atlases.get(texture_atlas_handle).unwrap();
-            sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
+    for (player, mut timer, mut sprite, texture_atlas_handle) in &mut query {
+        if player.animation_state != AnimationState::Running {
+            sprite.index = 0;
+        } else {
+            timer.tick(time.delta());
+            if timer.just_finished() {
+                let texture_atlas =
+                    texture_atlases.get(texture_atlas_handle).unwrap();
+                sprite.index =
+                    (sprite.index + 1) % texture_atlas.textures.len();
+            }
         }
     }
 }
@@ -202,26 +205,28 @@ fn keyboard_events(
 
 fn move_player_event_system(
     mut move_player_evr: EventReader<MovePlayerEvent>,
-    mut query: Query<(&mut Player)>,
+    mut query: Query<(&mut Player, &mut Velocity)>,
 ) {
     for move_player_event in move_player_evr.iter() {
-        for (mut player) in query.iter_mut() {
+        for (mut player, mut velocity) in query.iter_mut() {
             if move_player_event.player_id == player.id {
                 player.acceleration.x = move_player_event.translation.x;
+
+                if player.acceleration.x != 0.0 {
+                    player.animation_state = AnimationState::Running;
+                } else {
+                    player.animation_state = AnimationState::Idle;
+                }
+
+                if player.acceleration.x < 0.0 {
+                    player.view_direction = ViewDirection::Left;
+                } else if player.acceleration.x > 0.0 {
+                    player.view_direction = ViewDirection::Right
+                }
+
+                velocity.linvel.x = player.acceleration.x;
             }
         }
-    }
-}
-
-fn move_player_system(mut query: Query<(&mut Player, &mut Velocity)>) {
-    for (mut player, mut velocity) in query.iter_mut() {
-        if player.acceleration.x < 0.0 {
-            player.view_direction = ViewDirection::Left
-        } else if player.acceleration.x > 0.0 {
-            player.view_direction = ViewDirection::Right
-        }
-
-        velocity.linvel.x = player.acceleration.x;
     }
 }
 
