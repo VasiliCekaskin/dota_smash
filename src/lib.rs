@@ -56,7 +56,7 @@ pub fn app() -> App {
 fn setup_camera(mut commands: Commands) {
     commands.spawn_bundle(Camera2dBundle {
         projection: OrthographicProjection {
-            scale: 3.0,
+            scale: 2.0,
             ..Default::default()
         },
         ..Default::default()
