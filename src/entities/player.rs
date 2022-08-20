@@ -3,7 +3,7 @@ use bevy::{
     input::keyboard::KeyboardInput,
     prelude::{
         AssetServer, Commands, Component, EventReader, EventWriter, KeyCode,
-        Plugin, Query, Res, ResMut, Transform, Vec2,
+        Plugin, Query, Res, ResMut, Transform, Vec2, Vec3,
     },
     sprite::{Sprite, SpriteBundle},
     transform::TransformBundle,
@@ -89,12 +89,16 @@ fn setup(
             .insert(LockedAxes::ROTATION_LOCKED)
             .insert(Collider::cuboid(50.0, 50.0))
             .insert_bundle(SpriteBundle {
-                texture: asset_server.load("axe_idle.png"),
+                texture: asset_server.load("venomancer.png"),
                 ..Default::default()
             })
-            .insert_bundle(TransformBundle::from(Transform::from_xyz(
-                0.0, 0.0, 0.0,
-            )));
+            .insert_bundle(TransformBundle::from(
+                Transform::from_xyz(0.0, 0.0, 0.0).with_scale(Vec3 {
+                    x: 2.0,
+                    y: 2.0,
+                    z: 1.0,
+                }),
+            ));
     }
 }
 
@@ -242,9 +246,9 @@ fn attack_player_event_system(
 fn flip_player_system(mut query: Query<(&Player, &mut Sprite)>) {
     for (player, mut sprite) in query.iter_mut() {
         if player.view_direction == ViewDirection::Left {
-            sprite.flip_x = false;
-        } else if player.view_direction == ViewDirection::Right {
             sprite.flip_x = true;
+        } else if player.view_direction == ViewDirection::Right {
+            sprite.flip_x = false;
         }
     }
 }

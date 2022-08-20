@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  matchbox_pairing_server:
+    build: ./matchbox_server
+    ports:
+      - "3536:3536"
+  dota_smash_nginx:
+    build: .
+    image: dota_smash_nginx
+    ports:
+      - "80:80"
