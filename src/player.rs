@@ -1,8 +1,9 @@
 use bevy::{
     prelude::{
-        info, AssetServer, Assets, Camera2dBundle, Commands, Component, Deref,
-        DerefMut, Handle, In, Input, KeyCode, OrthographicProjection, Query,
-        Res, ResMut, Transform, Vec2, Vec3, With,
+        info, AssetServer, Assets, BuildChildren, Camera2dBundle, Commands,
+        Component, Deref, DerefMut, Handle, In, Input, KeyCode,
+        OrthographicProjection, Query, Res, ResMut, Transform, Vec2, Vec3,
+        With,
     },
     sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite},
     time::{Time, Timer},
@@ -74,8 +75,8 @@ pub fn setup_players(
         let mut transform = Transform::default();
 
         match handle {
-            0 => transform = Transform::from_xyz(-100.0, 0.0, 0.0),
-            1 => transform = Transform::from_xyz(100.0, 0.0, 0.0),
+            0 => transform = Transform::from_xyz(-100.0, 50.0, 0.0),
+            1 => transform = Transform::from_xyz(100.0, 50.0, 0.0),
             _ => (),
         }
 
@@ -100,7 +101,14 @@ pub fn setup_players(
             .insert(Velocity::default())
             .insert(GravityScale(10.0))
             .insert(LockedAxes::ROTATION_LOCKED)
-            .insert(Collider::cuboid(25.0, 50.0))
+            .with_children(|children| {
+                children
+                    .spawn()
+                    .insert(Collider::cuboid(25.0, 30.0))
+                    .insert_bundle(TransformBundle::from(Transform::from_xyz(
+                        0.0, -40.0, 0.0,
+                    )));
+            })
             .insert(Rollback::new(rip.next_id()));
     }
 
