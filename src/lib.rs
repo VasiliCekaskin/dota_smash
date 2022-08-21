@@ -21,7 +21,6 @@ pub fn app() -> App {
         fit_canvas_to_parent: true,
         ..Default::default()
     })
-    .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
     .add_plugins(DefaultPlugins)
     .add_plugin(LogDiagnosticsPlugin::default())
     .add_plugin(FrameTimeDiagnosticsPlugin::default())
