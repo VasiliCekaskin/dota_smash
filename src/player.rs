@@ -9,6 +9,9 @@ use bevy::{
     transform::TransformBundle,
 };
 use bevy_ggrs::{Rollback, RollbackIdProvider};
+use bevy_rapier2d::prelude::{
+    Collider, Friction, GravityScale, LockedAxes, RigidBody, Velocity,
+};
 use ggrs::{InputStatus, P2PSession, PlayerHandle};
 
 use crate::{
@@ -20,6 +23,8 @@ const INPUT_UP: u8 = 1 << 0;
 const INPUT_DOWN: u8 = 1 << 1;
 const INPUT_LEFT: u8 = 1 << 2;
 const INPUT_RIGHT: u8 = 1 << 3;
+
+const PLAYER_SPEED: f32 = 400.;
 
 #[derive(Component, Deref, DerefMut)]
 pub struct AnimationTimer(Timer);
@@ -87,6 +92,15 @@ pub fn setup_players(
                 y: 2.0,
                 z: 1.0,
             })))
+            .insert(RigidBody::Dynamic)
+            .insert(Friction {
+                coefficient: 0.0,
+                ..Default::default()
+            })
+            .insert(Velocity::default())
+            .insert(GravityScale(10.0))
+            .insert(LockedAxes::ROTATION_LOCKED)
+            .insert(Collider::cuboid(25.0, 50.0))
             .insert(Rollback::new(rip.next_id()));
     }
 
@@ -103,7 +117,7 @@ pub fn animate_players(
         &Handle<TextureAtlas>,
     )>,
 ) {
-    for (player, mut timer, mut sprite, texture_atlas_handle) in &mut query {
+    for (_, mut timer, mut sprite, texture_atlas_handle) in &mut query {
         timer.tick(time.delta());
         if timer.just_finished() {
             let texture_atlas =
@@ -136,17 +150,18 @@ pub fn input(
 }
 
 pub fn move_player_system(
-    mut query: Query<(&mut Transform, &Player), With<Rollback>>,
+    mut query: Query<(&Player, &mut Velocity), With<Rollback>>,
     inputs: Res<Vec<(BoxInput, InputStatus)>>,
 ) {
-    for (mut t, p) in query.iter_mut() {
+    for (p, mut v) in query.iter_mut() {
         let input = inputs[p.handle as usize].0.inp;
 
         if input & INPUT_LEFT != 0 && input & INPUT_RIGHT == 0 {
-            t.translation.x -= 50.;
-        }
-        if input & INPUT_LEFT == 0 && input & INPUT_RIGHT != 0 {
-            t.translation.x += 50.;
+            v.linvel.x = -PLAYER_SPEED;
+        } else if input & INPUT_LEFT == 0 && input & INPUT_RIGHT != 0 {
+            v.linvel.x = PLAYER_SPEED;
+        } else {
+            v.linvel.x = 0.;
         }
     }
 }

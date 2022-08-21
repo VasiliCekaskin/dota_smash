@@ -7,6 +7,7 @@ use bevy::{
     tasks::IoTaskPool,
 };
 use bevy_ggrs::{GGRSPlugin, SessionType};
+use bevy_rapier2d::prelude::Velocity;
 use bytemuck::{Pod, Zeroable};
 use ggrs::{Config, PlayerType, SessionBuilder};
 use matchbox_socket::WebRtcSocket;
@@ -38,6 +39,7 @@ pub fn setup_ggrs(mut app: &mut App) {
         .with_update_frequency(game::FPS as usize)
         .with_input_system(player::input)
         .register_rollback_type::<Transform>()
+        .register_rollback_type::<Velocity>()
         .with_rollback_schedule(
             Schedule::default().with_stage(
                 ROLLBACK_DEFAULT,
