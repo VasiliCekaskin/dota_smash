@@ -40,13 +40,16 @@ pub fn app() -> App {
         ..Default::default()
     })
     .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-    .insert_resource(GameState { started: false })
+    .insert_resource(GameState {
+        started: false,
+        setup_players: true,
+    })
     .insert_resource(GameConfig::default())
     .add_plugins(DefaultPlugins)
     .add_plugin(NetworkingPlugin)
     .add_plugin(ShapePlugin)
     .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
-    // .add_plugin(RapierDebugRenderPlugin::default())
+    .add_plugin(RapierDebugRenderPlugin::default())
     .add_plugin(LogDiagnosticsPlugin::default())
     .add_plugin(FrameTimeDiagnosticsPlugin::default())
     .add_startup_system(setup_camera)

@@ -16,7 +16,8 @@ use bevy_rapier2d::prelude::{
 use ggrs::P2PSession;
 
 use crate::{
-    resources::game_config::GameConfig, setup::networking::GGRSConfig,
+    resources::{game_config::GameConfig, game_state::GameState},
+    setup::networking::GGRSConfig,
 };
 
 pub struct PlayerPlugin;
@@ -24,7 +25,7 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_event::<MovePlayerEvent>()
             .add_event::<PlayerJumpEvent>()
-            .add_startup_system(setup)
+            .add_system(setup)
             .add_system(move_player_event_system)
             .add_system(jump_player_event_system)
             .add_system(state_management_system)
@@ -71,11 +72,22 @@ fn setup(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut session: Option<ResMut<P2PSession<GGRSConfig>>>,
+    mut game_state: ResMut<GameState>,
 ) {
-    let texture_handle = asset_server.load("venomancer_idle.png");
-    let texture_atlas =
-        TextureAtlas::from_grid(texture_handle, Vec2::new(100.0, 100.0), 5, 1);
-    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+    let session_is_setup = match session {
+        Some(sess) => sess.num_players() == 2,
+        None => false,
+    };
+
+    if session_is_setup && game_state.setup_players {
+        let texture_handle = asset_server.load("venomancer_idle.png");
+        let texture_atlas = TextureAtlas::from_grid(
+            texture_handle,
+            Vec2::new(100.0, 100.0),
+            5,
+            1,
+        );
+        let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
         commands
             .spawn()
@@ -109,8 +121,13 @@ fn setup(
                     z: 1.0,
                 }),
             ));
-    } 
+
+        game_state.setup_players = false;
+    } else {
+        return;
+    }
 }
+
 #[derive(Component, Deref, DerefMut)]
 struct AnimationTimer(Timer);
 
