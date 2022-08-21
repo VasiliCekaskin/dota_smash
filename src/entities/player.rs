@@ -72,15 +72,10 @@ fn setup(
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut session: Option<ResMut<P2PSession<GGRSConfig>>>,
 ) {
-    if let sess = session.unwrap() {
-        let texture_handle = asset_server.load("venomancer_running.png");
-        let texture_atlas = TextureAtlas::from_grid(
-            texture_handle,
-            Vec2::new(100.0, 100.0),
-            5,
-            1,
-        );
-        let texture_atlas_handle = texture_atlases.add(texture_atlas);
+    let texture_handle = asset_server.load("venomancer_idle.png");
+    let texture_atlas =
+        TextureAtlas::from_grid(texture_handle, Vec2::new(100.0, 100.0), 5, 1);
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
         commands
             .spawn()
@@ -114,9 +109,7 @@ fn setup(
                     z: 1.0,
                 }),
             ));
-    } else {
-        return; // No session, no player
-    }
+    } 
 }
 #[derive(Component, Deref, DerefMut)]
 struct AnimationTimer(Timer);
@@ -132,16 +125,11 @@ fn animate(
     )>,
 ) {
     for (player, mut timer, mut sprite, texture_atlas_handle) in &mut query {
-        if player.animation_state != AnimationState::Running {
-            sprite.index = 0;
-        } else {
-            timer.tick(time.delta());
-            if timer.just_finished() {
-                let texture_atlas =
-                    texture_atlases.get(texture_atlas_handle).unwrap();
-                sprite.index =
-                    (sprite.index + 1) % texture_atlas.textures.len();
-            }
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            let texture_atlas =
+                texture_atlases.get(texture_atlas_handle).unwrap();
+            sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
         }
     }
 }
