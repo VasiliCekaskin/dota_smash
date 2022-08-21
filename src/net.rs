@@ -1,14 +1,18 @@
 use bevy::{
-    prelude::{info, Commands, Component, ResMut, Stage},
+    prelude::{
+        info, App, Commands, Component, ResMut, Schedule, Stage, SystemStage,
+        Transform,
+    },
     reflect::{self, Reflect},
     tasks::IoTaskPool,
 };
-use bevy_ggrs::SessionType;
+use bevy_ggrs::{GGRSPlugin, SessionType};
 use bytemuck::{Pod, Zeroable};
 use ggrs::{Config, PlayerType, SessionBuilder};
 use matchbox_socket::WebRtcSocket;
 
-use crate::{GameStage, GameState};
+use crate::game::{self, GameStage, GameState, ROLLBACK_DEFAULT};
+use crate::player;
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Pod, Zeroable)]
@@ -27,6 +31,22 @@ impl Config for GGRSConfig {
 #[reflect(Hash)]
 pub struct FrameCount {
     pub frame: u32,
+}
+
+pub fn setup_ggrs(mut app: &mut App) {
+    GGRSPlugin::<GGRSConfig>::new()
+        .with_update_frequency(game::FPS as usize)
+        .with_input_system(player::input)
+        .register_rollback_type::<Transform>()
+        .with_rollback_schedule(
+            Schedule::default().with_stage(
+                ROLLBACK_DEFAULT,
+                SystemStage::parallel()
+                    .with_system(player::move_player_system)
+                    .with_system(increase_frame_system),
+            ),
+        )
+        .build(&mut app);
 }
 
 pub fn setup_socket(mut commands: Commands, mut game_state: ResMut<GameState>) {
