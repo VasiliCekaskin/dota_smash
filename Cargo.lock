@@ -1457,6 +1457,7 @@ dependencies = [
  "bevy_ggrs",
  "bevy_prototype_lyon",
  "bevy_rapier2d",
+ "bytemuck",
  "ggrs 0.9.2",
  "image",
  "iyes_loopless",
