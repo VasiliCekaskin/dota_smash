@@ -1,12 +1,19 @@
-use bevy::{core::Pod, prelude::*, tasks::*};
+use bevy::{core::Pod, input::*, prelude::*, tasks::*};
 use bevy_ggrs::{GGRSPlugin, SessionType};
 use bytemuck::Zeroable;
 use ggrs::{Config, PlayerHandle, PlayerType, SessionBuilder};
 use matchbox_socket::WebRtcSocket;
 
+use crate::resources::game_state::GameState;
+
+const INPUT_UP: u8 = 1 << 0;
+const INPUT_DOWN: u8 = 1 << 1;
+const INPUT_LEFT: u8 = 1 << 2;
+const INPUT_RIGHT: u8 = 1 << 3;
+
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Pod, Zeroable)]
-pub struct Input {
+pub struct BoxInput {
     pub inp: u8,
 }
 
@@ -17,14 +24,42 @@ pub struct LocalHandles {
 #[derive(Debug)]
 pub struct GGRSConfig;
 impl Config for GGRSConfig {
-    type Input = Input;
+    type Input = BoxInput;
     type State = u8;
     type Address = String;
 }
 
+#[derive(Default, Reflect, Hash, Component)]
+#[reflect(Hash)]
+pub struct FrameCount {
+    pub frame: u32,
+}
+
 pub struct NetworkingPlugin;
 
-fn start_matchbox_socket(mut commands: Commands) {
+pub fn network_input_system(
+    _handle: In<PlayerHandle>,
+    keyboard_input: Res<Input<KeyCode>>,
+) -> BoxInput {
+    let mut input: u8 = 0;
+
+    if keyboard_input.pressed(KeyCode::W) {
+        input |= INPUT_UP;
+    }
+    if keyboard_input.pressed(KeyCode::A) {
+        input |= INPUT_LEFT;
+    }
+    if keyboard_input.pressed(KeyCode::S) {
+        input |= INPUT_DOWN;
+    }
+    if keyboard_input.pressed(KeyCode::D) {
+        input |= INPUT_RIGHT;
+    }
+
+    BoxInput { inp: input }
+}
+
+fn create_matchbox_socket(mut commands: Commands) {
     let room_url = "ws://192.168.2.170:3536/next_2";
 
     info!("connecting to matchbox server: {:?}", room_url);
@@ -38,10 +73,15 @@ fn start_matchbox_socket(mut commands: Commands) {
     commands.insert_resource(Some(socket));
 }
 
-fn wait_for_players(
+fn create_ggrs_sessions(
     mut commands: Commands,
+    mut game_state: ResMut<GameState>,
     mut socket: ResMut<Option<WebRtcSocket>>,
 ) {
+    if game_state.started {
+        return; // Game already started, no need to create sessions
+    }
+
     let socket = socket.as_mut();
 
     // If there is no socket we've already started the game
@@ -54,10 +94,6 @@ fn wait_for_players(
     socket.as_mut().unwrap().accept_new_connections();
     let players = socket.as_ref().unwrap().players();
 
-    let connected_peers = socket.as_ref().unwrap().connected_peers();
-
-    info!("{:?}", connected_peers);
-
     let num_players = 2;
     if players.len() < num_players {
         return; // wait for more players
@@ -66,8 +102,6 @@ fn wait_for_players(
     info!("All peers have joined, going in-game");
     // consume the socket (currently required because GGRS takes ownership of its socket)
     let socket = socket.take().unwrap();
-
-    let max_prediction = 12;
 
     // create a GGRS P2P session
     let mut session_builder = SessionBuilder::<GGRSConfig>::new()
@@ -90,16 +124,24 @@ fn wait_for_players(
     // start the GGRS session
     let session = session_builder.start_p2p_session(socket);
 
+    for a in session.iter() {
+        println!("{:?}", a.num_players());
+    }
+
     commands.insert_resource(session);
     commands.insert_resource(LocalHandles { handles });
     commands.insert_resource(SessionType::P2PSession);
+
+    game_state.started = true;
 }
 
 impl Plugin for NetworkingPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(start_matchbox_socket)
-            .add_system(wait_for_players);
+        app.add_startup_system(create_matchbox_socket)
+            .add_system(create_ggrs_sessions);
 
-        GGRSPlugin::<GGRSConfig>::new().build(app);
+        GGRSPlugin::<GGRSConfig>::new()
+            .with_input_system(network_input_system)
+            .build(app);
     }
 }

@@ -1,4 +1,3 @@
-use crate::fireball::Fireball;
 use bevy::{
     input::keyboard::KeyboardInput,
     prelude::Timer,
@@ -14,22 +13,21 @@ use bevy::{
 use bevy_rapier2d::prelude::{
     Collider, Friction, GravityScale, LockedAxes, RigidBody, Velocity,
 };
+use ggrs::P2PSession;
 
-use crate::resources::game_config::GameConfig;
-use crate::resources::game_state::GameState;
+use crate::{
+    resources::game_config::GameConfig, setup::networking::GGRSConfig,
+};
 
 pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.add_event::<MovePlayerEvent>()
             .add_event::<PlayerJumpEvent>()
-            .add_event::<PlayerAttackEvent>()
             .add_startup_system(setup)
-            .add_system(keyboard_events)
             .add_system(move_player_event_system)
             .add_system(jump_player_event_system)
             .add_system(state_management_system)
-            .add_system(attack_player_event_system)
             .add_system(flip_player_system)
             .add_system(animate);
     }
@@ -68,23 +66,22 @@ struct PlayerJumpEvent {
     translation: Vec2,
 }
 
-struct PlayerAttackEvent {
-    player_id: usize,
-}
-
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    game_config: Res<GameConfig>,
-    game_state: Res<GameState>,
+    mut session: Option<ResMut<P2PSession<GGRSConfig>>>,
 ) {
-    let texture_handle = asset_server.load("venomancer_running.png");
-    let texture_atlas =
-        TextureAtlas::from_grid(texture_handle, Vec2::new(100.0, 100.0), 5, 1);
-    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+    if let sess = session.unwrap() {
+        let texture_handle = asset_server.load("venomancer_running.png");
+        let texture_atlas = TextureAtlas::from_grid(
+            texture_handle,
+            Vec2::new(100.0, 100.0),
+            5,
+            1,
+        );
+        let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
-    if game_config.player_max_count > game_state.current_player_count {
         commands
             .spawn()
             .insert(Player {
@@ -117,6 +114,8 @@ fn setup(
                     z: 1.0,
                 }),
             ));
+    } else {
+        return; // No session, no player
     }
 }
 #[derive(Component, Deref, DerefMut)]
@@ -151,7 +150,6 @@ fn keyboard_events(
     mut keyboard_input_evr: EventReader<KeyboardInput>,
     mut move_player_ewr: EventWriter<MovePlayerEvent>,
     mut player_jump_ewr: EventWriter<PlayerJumpEvent>,
-    mut player_attack_ewr: EventWriter<PlayerAttackEvent>,
     game_config: Res<GameConfig>,
 ) {
     use bevy::input::ButtonState;
@@ -183,9 +181,6 @@ fn keyboard_events(
                             * game_config.player_acceleration.y,
                     },
                 }),
-                Some(KeyCode::Space) => {
-                    player_attack_ewr.send(PlayerAttackEvent { player_id: 1 })
-                }
                 _ => (),
             },
             ButtonState::Released => match keyboard_input.key_code {
@@ -265,26 +260,6 @@ fn jump_player_event_system(
                     velocity.linvel.y = player_jump_event.translation.y;
                     player.is_double_jumping = true;
                 }
-            }
-        }
-    }
-}
-
-fn attack_player_event_system(
-    mut commands: Commands,
-    mut player_attack_er: EventReader<PlayerAttackEvent>,
-    mut asset_server: ResMut<AssetServer>,
-    query: Query<(&Player, &Transform)>,
-) {
-    for player_attack_event in player_attack_er.iter() {
-        for (player, transform) in query.iter() {
-            if (player_attack_event.player_id == player.id) {
-                Fireball::new_for_player(
-                    player,
-                    transform,
-                    &mut commands,
-                    &mut asset_server,
-                );
             }
         }
     }
