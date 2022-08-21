@@ -1,20 +1,23 @@
 use bevy::{core::Pod, prelude::*, tasks::*};
-use bevy_ggrs::GGRSPlugin;
+use bevy_ggrs::{GGRSPlugin, SessionType};
 use bytemuck::Zeroable;
-use ggrs::Config;
-use matchbox_socket::WebRtcNonBlockingSocket;
+use ggrs::{Config, PlayerHandle, PlayerType, SessionBuilder};
+use matchbox_socket::WebRtcSocket;
 
 #[repr(C)]
-#[derive(Copy, PartialEq, Clone, Pod, Zeroable)]
-struct Test {
-    a: u16,
-    b: u16,
+#[derive(Copy, Clone, PartialEq, Pod, Zeroable)]
+pub struct Input {
+    pub inp: u8,
+}
+
+pub struct LocalHandles {
+    pub handles: Vec<PlayerHandle>,
 }
 
 #[derive(Debug)]
 pub struct GGRSConfig;
 impl Config for GGRSConfig {
-    type Input = Test;
+    type Input = Input;
     type State = u8;
     type Address = String;
 }
@@ -26,7 +29,7 @@ fn start_matchbox_socket(mut commands: Commands) {
 
     info!("connecting to matchbox server: {:?}", room_url);
 
-    let (socket, message_loop) = WebRtcNonBlockingSocket::new(room_url);
+    let (socket, message_loop) = WebRtcSocket::new(room_url);
 
     // The message loop needs to be awaited, or nothing will happen.
     // We do this here using bevy's task system.
@@ -37,7 +40,7 @@ fn start_matchbox_socket(mut commands: Commands) {
 
 fn wait_for_players(
     mut commands: Commands,
-    mut socket: ResMut<Option<WebRtcNonBlockingSocket>>,
+    mut socket: ResMut<Option<WebRtcSocket>>,
 ) {
     let socket = socket.as_mut();
 
@@ -67,30 +70,29 @@ fn wait_for_players(
     let max_prediction = 12;
 
     // create a GGRS P2P session
-    let mut p2p_session = ggrs::P2PSession
+    let mut session_builder = SessionBuilder::<GGRSConfig>::new()
+        .with_num_players(num_players)
+        .with_max_prediction_window(12)
+        .with_fps(60 as usize)
+        .expect("Invalid FPS")
+        .with_input_delay(2);
 
-    // ggrs::P2PSession::new_with_socket(
-    //     num_players as u32,
-    //     INPUT_SIZE,
-    //     max_prediction,
-    //     socket,
-    // );
-
-    for (i, player) in players.into_iter().enumerate() {
-        p2p_session
-            .add_player(player, i)
-            .expect("failed to add player");
-
-        if player == PlayerType::Local {
-            // set input delay for the local player
-            p2p_session.set_frame_delay(2, i).unwrap();
+    let mut handles = Vec::new();
+    for (i, player_type) in socket.players().iter().enumerate() {
+        if *player_type == PlayerType::Local {
+            handles.push(i);
         }
+        session_builder = session_builder
+            .add_player(player_type.clone(), i)
+            .expect("Invalid player added.");
     }
 
     // start the GGRS session
-    commands.start_p2p_session(p2p_session);
+    let session = session_builder.start_p2p_session(socket);
 
-    // TODO
+    commands.insert_resource(session);
+    commands.insert_resource(LocalHandles { handles });
+    commands.insert_resource(SessionType::P2PSession);
 }
 
 impl Plugin for NetworkingPlugin {
@@ -98,6 +100,6 @@ impl Plugin for NetworkingPlugin {
         app.add_startup_system(start_matchbox_socket)
             .add_system(wait_for_players);
 
-        GGRSPlugin::new().build(app);
+        GGRSPlugin::<GGRSConfig>::new().build(app);
     }
 }
