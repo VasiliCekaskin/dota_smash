@@ -79,7 +79,7 @@ fn setup(
     game_config: Res<GameConfig>,
     game_state: Res<GameState>,
 ) {
-    let texture_handle = asset_server.load("venomancer_running.png");
+    let texture_handle = asset_server.load("venomancer_idle.png");
     let texture_atlas =
         TextureAtlas::from_grid(texture_handle, Vec2::new(100.0, 100.0), 5, 1);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
@@ -133,16 +133,11 @@ fn animate(
     )>,
 ) {
     for (player, mut timer, mut sprite, texture_atlas_handle) in &mut query {
-        if player.animation_state != AnimationState::Running {
-            sprite.index = 0;
-        } else {
-            timer.tick(time.delta());
-            if timer.just_finished() {
-                let texture_atlas =
-                    texture_atlases.get(texture_atlas_handle).unwrap();
-                sprite.index =
-                    (sprite.index + 1) % texture_atlas.textures.len();
-            }
+        timer.tick(time.delta());
+        if timer.just_finished() {
+            let texture_atlas =
+                texture_atlases.get(texture_atlas_handle).unwrap();
+            sprite.index = (sprite.index + 1) % texture_atlas.textures.len();
         }
     }
 }
