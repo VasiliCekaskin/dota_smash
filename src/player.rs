@@ -1,10 +1,13 @@
 use bevy::{
     prelude::{
         info, AssetServer, Assets, BuildChildren, Commands, Component, Deref,
-        DerefMut, Entity, Handle, In, Input, KeyCode, Plugin, Query, Res,
-        ResMut, Transform, Vec2, Vec3, With,
+        DerefMut, Entity, Handle, Image, In, Input, KeyCode, Plugin, Query,
+        Res, ResMut, Transform, Vec2, Vec3, With,
     },
-    sprite::{Sprite, SpriteSheetBundle, TextureAtlas, TextureAtlasSprite},
+    sprite::{
+        Sprite, SpriteBundle, SpriteSheetBundle, TextureAtlas,
+        TextureAtlasSprite,
+    },
     time::{Time, Timer},
     transform::TransformBundle,
 };
@@ -26,6 +29,7 @@ const INPUT_UP: u8 = 1 << 0;
 const INPUT_DOWN: u8 = 1 << 1;
 const INPUT_LEFT: u8 = 1 << 2;
 const INPUT_RIGHT: u8 = 1 << 3;
+const INPUT_SPACE: u8 = 1 << 4;
 
 const PLAYER_SPEED: f32 = 400.;
 
@@ -257,23 +261,29 @@ pub fn ggrs_input(
     if keyboard_input.pressed(KeyCode::D) {
         input |= INPUT_RIGHT;
     }
+    if keyboard_input.pressed(KeyCode::Space) {
+        input |= INPUT_SPACE;
+    }
 
     BoxInput { inp: input }
 }
 
 pub fn ggrs_move_player_system(
+    mut commands: Commands,
     mut query: Query<
-        (&Player, &mut Velocity, &mut TextureAtlasSprite),
+        (&Player, &Transform, &mut Velocity, &mut TextureAtlasSprite),
         With<Rollback>,
     >,
+    mut asset_server: Res<AssetServer>,
     game_state: Res<GameState>,
     inputs: Res<Vec<(BoxInput, InputStatus)>>,
+    mut rip: ResMut<RollbackIdProvider>,
 ) {
     if game_state.stage != GameStage::Gameplay {
         return;
     }
 
-    for (p, mut v, mut s) in query.iter_mut() {
+    for (p, t, mut v, mut s) in query.iter_mut() {
         let input = inputs[p.handle as usize].0.inp;
 
         if input & INPUT_LEFT != 0 && input & INPUT_RIGHT == 0 {
@@ -287,9 +297,51 @@ pub fn ggrs_move_player_system(
         if input & INPUT_UP != 0 {
             v.linvel.y = PLAYER_SPEED;
         }
+        if input & INPUT_SPACE != 0 {
+            spawn_fireball(&mut commands, (p, t, &s), &asset_server, &mut rip)
+        }
 
         if input == 0 {
             v.linvel.x = 0.;
         }
     }
+}
+
+#[derive(Component)]
+struct Fireball {
+    player_handle: usize,
+}
+
+pub fn spawn_fireball(
+    commands: &mut Commands,
+    player_entity: (&Player, &Transform, &TextureAtlasSprite),
+    asset_server: &AssetServer,
+    rip: &mut RollbackIdProvider,
+) {
+    let fireball_texture: Handle<Image> = asset_server.load("fireball.png");
+
+    let mut transform = player_entity.1.clone();
+
+    if player_entity.2.flip_x {
+        transform.translation.x -= 50.0;
+    } else {
+        transform.translation.x += 50.0;
+    }
+
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: fireball_texture,
+            ..Default::default()
+        })
+        .insert(Fireball {
+            player_handle: player_entity.0.handle,
+        })
+        .insert(transform)
+        .insert(RigidBody::Dynamic)
+        .insert(Collider::ball(15.0))
+        .insert(Velocity {
+            linvel: Vec2::new(500.0, 0.0),
+            ..Default::default()
+        })
+        .insert(Rollback::new(rip.next_id()));
 }

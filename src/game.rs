@@ -4,16 +4,6 @@ use bevy_rapier2d::prelude::*;
 use crate::net;
 use crate::player;
 
-/// Load initial map (Lobby)
-/// Setup local player
-/// Await Enter as input
-/// Await UDP socket connection
-///
-///
-///
-///
-///
-
 pub const FPS: f32 = 60.0;
 pub const ROLLBACK_DEFAULT: &str = "rollback_default";
 
@@ -52,7 +42,7 @@ impl Plugin for GamePlugin {
 }
 
 fn setup_lobby(
-    mut commands: Commands,
+    commands: Commands,
     asset_server: ResMut<AssetServer>,
     mut game_state: ResMut<GameState>,
 ) {

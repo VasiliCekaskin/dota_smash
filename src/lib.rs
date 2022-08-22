@@ -32,7 +32,6 @@ pub fn app() -> App {
         fit_canvas_to_parent: true,
         ..Default::default()
     })
-    .insert_resource(net::FrameCount { frame: 0 })
     .add_plugins(DefaultPlugins)
     .add_plugin(debug_ui::DebugUiPlugin)
     .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))

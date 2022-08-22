@@ -39,11 +39,16 @@ pub struct FrameCount {
 }
 
 pub fn setup_ggrs(mut app: &mut App) {
+    app.insert_resource(FrameCount { frame: 0 })
+        .insert_resource(NetworkStats::default())
+        .add_system(update_networking_stats);
+
     GGRSPlugin::<GGRSConfig>::new()
         .with_update_frequency(game::FPS as usize)
         .with_input_system(player::ggrs_input)
         .register_rollback_type::<Transform>()
         .register_rollback_type::<Velocity>()
+        .register_rollback_type::<FrameCount>()
         .with_rollback_schedule(
             Schedule::default().with_stage(
                 ROLLBACK_DEFAULT,
@@ -53,9 +58,6 @@ pub fn setup_ggrs(mut app: &mut App) {
             ),
         )
         .build(&mut app);
-
-    app.insert_resource(NetworkStats::default())
-        .add_system(update_networking_stats);
 }
 
 fn update_networking_stats(
