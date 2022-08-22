@@ -1,3 +1,4 @@
+use bevy::asset::AssetServerError;
 use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
 use bevy::prelude::{App, Commands};
@@ -35,15 +36,15 @@ pub fn app() -> App {
     .insert_resource(net::FrameCount { frame: 0 })
     .add_plugins(DefaultPlugins)
     .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
-    .add_plugin(RapierDebugRenderPlugin::default())
+    // .add_plugin(RapierDebugRenderPlugin::default())
     // .add_plugin(LogDiagnosticsPlugin::default())
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())
     .add_system(bevy::window::close_on_esc)
     .add_startup_system(setup_world)
-    .add_startup_system(net::setup_socket)
-    .add_system(net::setup_session)
-    .add_system(player::setup_players)
-    .add_system(player::animate_players)
+    // .add_startup_system(net::setup_socket)
+    // .add_system(net::setup_session)
+    // .add_system(player::setup_players)
+    // .add_system(player::animate_players)
     .run();
 
     return app;
@@ -51,9 +52,31 @@ pub fn app() -> App {
 
 fn setup_world(
     mut commands: Commands,
+    mut asset_server: ResMut<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // Camera
+
+    commands.spawn_bundle(Camera2dBundle {
+        projection: OrthographicProjection {
+            scale: 2.0,
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    // Background
+    let background_texture = asset_server.load("background.png");
+
+    commands
+        .spawn_bundle(SpriteBundle {
+            texture: background_texture,
+            ..Default::default()
+        })
+        .insert(Transform::default().with_scale(Vec3::splat(2.0)));
+
+    // Platform
     commands
         .spawn_bundle(PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Quad {

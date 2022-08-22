@@ -56,14 +56,6 @@ pub fn setup_players(
         return;
     }
 
-    commands.spawn_bundle(Camera2dBundle {
-        projection: OrthographicProjection {
-            scale: 2.0,
-            ..Default::default()
-        },
-        ..Default::default()
-    });
-
     let num_players = session.unwrap().num_players();
 
     for handle in 0..num_players {
