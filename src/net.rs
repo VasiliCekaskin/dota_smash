@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
-        info, App, Commands, Component, ResMut, Schedule, Stage, SystemStage,
-        Transform,
+        info, App, Commands, Component, Res, ResMut, Schedule, Stage,
+        SystemStage, Transform,
     },
     reflect::{self, Reflect},
     tasks::IoTaskPool,
@@ -52,11 +52,9 @@ pub fn setup_ggrs(mut app: &mut App) {
 }
 
 pub fn setup_socket(mut commands: Commands, mut game_state: ResMut<GameState>) {
-    if game_state.stage != GameStage::Init {
+    if game_state.stage != GameStage::SetupSocket {
         return; // Nothing to do we are not in the init phase
     }
-
-    game_state.stage = GameStage::SetupSocket; // Go into SetupSocket stage
 
     let room_url = "ws://192.168.2.170:3536/next_2";
 
@@ -70,18 +68,24 @@ pub fn setup_socket(mut commands: Commands, mut game_state: ResMut<GameState>) {
 
     commands.insert_resource(Some(socket));
 
-    game_state.stage = GameStage::SetupSession; // Done creating socket, create session
+    game_state.stage = GameStage::SetupSession;
 }
 
 pub fn setup_session(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
-    mut socket: ResMut<Option<WebRtcSocket>>,
+    socket: Option<ResMut<Option<WebRtcSocket>>>,
 ) {
     if game_state.stage != GameStage::SetupSession {
         return;
     }
 
+    // No socket, no setup
+    if socket.is_none() {
+        return;
+    }
+
+    let mut socket = socket.unwrap();
     let socket = socket.as_mut();
 
     // Check for new connections
@@ -101,7 +105,7 @@ pub fn setup_session(
     // create a GGRS P2P session
     let mut session_builder = SessionBuilder::<GGRSConfig>::new()
         .with_num_players(num_players)
-        .with_max_prediction_window(3)
+        .with_max_prediction_window(12)
         .with_fps(FPS as usize)
         .expect("Invalid FPS")
         .with_input_delay(2);
@@ -122,7 +126,7 @@ pub fn setup_session(
     commands.insert_resource(session);
     commands.insert_resource(SessionType::P2PSession);
 
-    game_state.stage = GameStage::SpawnPlayers;
+    game_state.stage = GameStage::SetupGameplayPlayers;
 }
 
 pub fn increase_frame_system(mut frame_count: ResMut<FrameCount>) {

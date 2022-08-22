@@ -1,9 +1,8 @@
 use bevy::{
     prelude::{
-        info, AssetServer, Assets, BuildChildren, Camera2dBundle, Commands,
-        Component, Deref, DerefMut, Entity, Handle, In, Input, KeyCode,
-        OrthographicProjection, Query, Res, ResMut, Transform, Vec2, Vec3,
-        With,
+        info, AssetServer, Assets, BuildChildren, Commands, Component, Deref,
+        DerefMut, Entity, Handle, In, Input, KeyCode, Plugin, Query, Res,
+        ResMut, Transform, Vec2, Vec3, With,
     },
     sprite::{Sprite, SpriteSheetBundle, TextureAtlas, TextureAtlasSprite},
     time::{Time, Timer},
@@ -14,12 +13,13 @@ use bevy_rapier2d::prelude::{
     Collider, CollisionGroups, Friction, GravityScale, LockedAxes, RigidBody,
     SolverGroups, Velocity,
 };
-use ggrs::{InputStatus, P2PSession, PlayerHandle};
+use ggrs::{InputStatus, P2PSession, PlayerHandle, PlayerType};
 
 use crate::{
+    game::{GameStage, GameState},
     net::{BoxInput, GGRSConfig},
-    GameStage, GameState,
 };
+// use crate::net::{BoxInput, GGRSConfig};
 
 const INPUT_UP: u8 = 1 << 0;
 const INPUT_DOWN: u8 = 1 << 1;
@@ -39,14 +39,17 @@ pub struct Player {
     pub handle: usize,
 }
 
-pub fn setup_initial_player(
+pub fn setup_lobby_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
-    mut rip: ResMut<RollbackIdProvider>,
-    session: Option<ResMut<P2PSession<GGRSConfig>>>,
     mut game_state: ResMut<GameState>,
 ) {
+    // We are not in the stage to setup a lobby player, go on...
+    if game_state.stage != GameStage::SetupLobbyPlayer {
+        return;
+    }
+
     let texture_handle = asset_server.load("venomancer_idle.png");
     let texture_atlas =
         TextureAtlas::from_grid(texture_handle, Vec2::new(100.0, 100.0), 5, 1);
@@ -86,12 +89,38 @@ pub fn setup_initial_player(
                 .insert_bundle(TransformBundle::from(Transform::from_xyz(
                     0.0, -40.0, 0.0,
                 )));
-        })
-        // .insert(CollisionGroups::new(0b0001, 0b0010))
-        .insert(Rollback::new(rip.next_id()));
+        });
+
+    game_state.stage = GameStage::SetupSocket;
 }
 
-pub fn setup_players(
+pub fn local_input_system(
+    keyboard_input: Res<Input<KeyCode>>,
+    game_state: Res<GameState>,
+    mut query: Query<(&Player, &mut TextureAtlasSprite, &mut Velocity)>,
+) {
+    // This system should only work while we are waiting for new players to join
+    if game_state.stage == GameStage::Gameplay {
+        return;
+    }
+
+    for (p, mut s, mut v) in query.iter_mut() {
+        if keyboard_input.pressed(KeyCode::W) {
+            v.linvel.y = PLAYER_SPEED;
+        } else if keyboard_input.pressed(KeyCode::A) {
+            s.flip_x = true;
+            v.linvel.x = -PLAYER_SPEED;
+        } else if keyboard_input.pressed(KeyCode::S) {
+        } else if keyboard_input.pressed(KeyCode::D) {
+            s.flip_x = false;
+            v.linvel.x = PLAYER_SPEED;
+        } else {
+            v.linvel.x = 0.0;
+        }
+    }
+}
+
+pub fn setup_gameplay_players(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
@@ -100,6 +129,10 @@ pub fn setup_players(
     mut game_state: ResMut<GameState>,
     mut query: Query<(Entity, &Player, &RigidBody)>,
 ) {
+    if game_state.stage != GameStage::SetupGameplayPlayers {
+        return;
+    }
+
     // No session, skip
     if session.is_none() {
         return;
@@ -223,8 +256,13 @@ pub fn ggrs_move_player_system(
         (&Player, &mut Velocity, &mut TextureAtlasSprite),
         With<Rollback>,
     >,
+    game_state: Res<GameState>,
     inputs: Res<Vec<(BoxInput, InputStatus)>>,
 ) {
+    if game_state.stage != GameStage::Gameplay {
+        return;
+    }
+
     for (p, mut v, mut s) in query.iter_mut() {
         let input = inputs[p.handle as usize].0.inp;
 
