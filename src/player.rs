@@ -5,7 +5,7 @@ use bevy::{
         OrthographicProjection, Query, Res, ResMut, Transform, Vec2, Vec3,
         With,
     },
-    sprite::{SpriteSheetBundle, TextureAtlas, TextureAtlasSprite},
+    sprite::{Sprite, SpriteSheetBundle, TextureAtlas, TextureAtlasSprite},
     time::{Time, Timer},
     transform::TransformBundle,
 };
@@ -167,17 +167,28 @@ pub fn input(
 }
 
 pub fn move_player_system(
-    mut query: Query<(&Player, &mut Velocity), With<Rollback>>,
+    mut query: Query<
+        (&Player, &mut Velocity, &mut TextureAtlasSprite),
+        With<Rollback>,
+    >,
     inputs: Res<Vec<(BoxInput, InputStatus)>>,
 ) {
-    for (p, mut v) in query.iter_mut() {
+    for (p, mut v, mut s) in query.iter_mut() {
         let input = inputs[p.handle as usize].0.inp;
 
         if input & INPUT_LEFT != 0 && input & INPUT_RIGHT == 0 {
+            s.flip_x = true;
             v.linvel.x = -PLAYER_SPEED;
-        } else if input & INPUT_LEFT == 0 && input & INPUT_RIGHT != 0 {
+        }
+        if input & INPUT_LEFT == 0 && input & INPUT_RIGHT != 0 {
+            s.flip_x = false;
             v.linvel.x = PLAYER_SPEED;
-        } else {
+        }
+        if input & INPUT_UP != 0 {
+            v.linvel.y = PLAYER_SPEED;
+        }
+
+        if input == 0 {
             v.linvel.x = 0.;
         }
     }
