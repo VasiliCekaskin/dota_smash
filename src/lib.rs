@@ -68,5 +68,8 @@ fn setup_world(
             coefficient: 0.0,
             ..Default::default()
         })
-        .insert(Collider::cuboid(20000.0, 20.0));
+        .insert(Collider::cuboid(20000.0, 20.0))
+        .insert_bundle(TransformBundle::from(Transform::from_xyz(
+            0.0, -200.0, 0.0,
+        )));
 }

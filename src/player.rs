@@ -11,7 +11,8 @@ use bevy::{
 };
 use bevy_ggrs::{Rollback, RollbackIdProvider};
 use bevy_rapier2d::prelude::{
-    Collider, Friction, GravityScale, LockedAxes, RigidBody, Velocity,
+    Collider, CollisionGroups, Friction, GravityScale, LockedAxes, RigidBody,
+    SolverGroups, Velocity,
 };
 use ggrs::{InputStatus, P2PSession, PlayerHandle};
 
@@ -26,6 +27,9 @@ const INPUT_LEFT: u8 = 1 << 2;
 const INPUT_RIGHT: u8 = 1 << 3;
 
 const PLAYER_SPEED: f32 = 400.;
+
+const PLAYER_COLLISION_GROUP: u32 = 0b01;
+const OTHER_COLLISION_GROUP: u32 = 0b10;
 
 #[derive(Component, Deref, DerefMut)]
 pub struct AnimationTimer(Timer);
@@ -75,8 +79,8 @@ pub fn setup_players(
         let mut transform = Transform::default();
 
         match handle {
-            0 => transform = Transform::from_xyz(-100.0, 50.0, 0.0),
-            1 => transform = Transform::from_xyz(100.0, 50.0, 0.0),
+            0 => transform = Transform::from_xyz(-100.0, 80.0, 0.0),
+            1 => transform = Transform::from_xyz(100.0, 80.0, 0.0),
             _ => (),
         }
 
@@ -105,10 +109,15 @@ pub fn setup_players(
                 children
                     .spawn()
                     .insert(Collider::cuboid(25.0, 30.0))
+                    .insert(CollisionGroups::new(
+                        PLAYER_COLLISION_GROUP,
+                        OTHER_COLLISION_GROUP,
+                    ))
                     .insert_bundle(TransformBundle::from(Transform::from_xyz(
                         0.0, -40.0, 0.0,
                     )));
             })
+            // .insert(CollisionGroups::new(0b0001, 0b0010))
             .insert(Rollback::new(rip.next_id()));
     }
 
