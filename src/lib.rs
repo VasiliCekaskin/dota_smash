@@ -36,7 +36,7 @@ pub fn app() -> App {
     .insert_resource(net::FrameCount { frame: 0 })
     .add_plugins(DefaultPlugins)
     .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
-    // .add_plugin(RapierDebugRenderPlugin::default())
+    .add_plugin(RapierDebugRenderPlugin::default())
     // .add_plugin(LogDiagnosticsPlugin::default())
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())
     .add_system(bevy::window::close_on_esc)
@@ -52,12 +52,11 @@ pub fn app() -> App {
 
 fn setup_world(
     mut commands: Commands,
-    mut asset_server: ResMut<AssetServer>,
+    asset_server: ResMut<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-
     commands.spawn_bundle(Camera2dBundle {
         projection: OrthographicProjection {
             scale: 2.0,
@@ -76,14 +75,12 @@ fn setup_world(
         })
         .insert(Transform::default().with_scale(Vec3::splat(2.0)));
 
+    let platform_texture = asset_server.load("platform.png");
+
     // Platform
     commands
-        .spawn_bundle(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Quad {
-                size: Vec2::new(2000.0, 20.0),
-                ..Default::default()
-            })),
-            material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        .spawn_bundle(SpriteBundle {
+            texture: platform_texture,
             ..Default::default()
         })
         .insert(RigidBody::Fixed)
@@ -91,8 +88,8 @@ fn setup_world(
             coefficient: 0.0,
             ..Default::default()
         })
-        .insert(Collider::cuboid(20000.0, 20.0))
-        .insert_bundle(TransformBundle::from(Transform::from_xyz(
-            0.0, -200.0, 0.0,
-        )));
+        .insert(Collider::cuboid(400.0, 75.0))
+        .insert_bundle(TransformBundle::from(
+            Transform::from_xyz(0.0, -400.0, 1.0).with_scale(Vec3::splat(2.0)),
+        ));
 }
