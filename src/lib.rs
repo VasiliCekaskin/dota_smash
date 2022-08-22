@@ -32,6 +32,7 @@ pub fn app() -> App {
     })
     .insert_resource(GameState {
         stage: GameStage::Init,
+        socket_setup: false,
     })
     .insert_resource(net::FrameCount { frame: 0 })
     .add_plugins(DefaultPlugins)
@@ -41,10 +42,11 @@ pub fn app() -> App {
     // .add_plugin(FrameTimeDiagnosticsPlugin::default())
     .add_system(bevy::window::close_on_esc)
     .add_startup_system(setup_world)
-    // .add_startup_system(net::setup_socket)
-    // .add_system(net::setup_session)
-    // .add_system(player::setup_players)
-    // .add_system(player::animate_players)
+    .add_startup_system(player::setup_initial_player)
+    .add_system(player::setup_players)
+    .add_system(player::animate_players)
+    .add_startup_system(net::setup_socket)
+    .add_system(net::setup_session)
     .run();
 
     return app;

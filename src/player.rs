@@ -1,7 +1,7 @@
 use bevy::{
     prelude::{
         info, AssetServer, Assets, BuildChildren, Camera2dBundle, Commands,
-        Component, Deref, DerefMut, Handle, In, Input, KeyCode,
+        Component, Deref, DerefMut, Entity, Handle, In, Input, KeyCode,
         OrthographicProjection, Query, Res, ResMut, Transform, Vec2, Vec3,
         With,
     },
@@ -39,7 +39,7 @@ pub struct Player {
     pub handle: usize,
 }
 
-pub fn setup_players(
+pub fn setup_initial_player(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
@@ -47,13 +47,73 @@ pub fn setup_players(
     session: Option<ResMut<P2PSession<GGRSConfig>>>,
     mut game_state: ResMut<GameState>,
 ) {
-    if game_state.stage != GameStage::SpawnPlayers {
+    let texture_handle = asset_server.load("venomancer_idle.png");
+    let texture_atlas =
+        TextureAtlas::from_grid(texture_handle, Vec2::new(100.0, 100.0), 5, 1);
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
+
+    let transform = Transform::from_xyz(-100.0, 80.0, 1.0);
+
+    commands
+        .spawn()
+        .insert(Player { handle: 0 })
+        .insert_bundle(SpriteSheetBundle {
+            texture_atlas: texture_atlas_handle,
+            ..Default::default()
+        })
+        .insert(AnimationTimer(Timer::from_seconds(0.15, true)))
+        .insert_bundle(TransformBundle::from(transform.with_scale(Vec3 {
+            x: 2.0,
+            y: 2.0,
+            z: 1.0,
+        })))
+        .insert(RigidBody::Dynamic)
+        .insert(Friction {
+            coefficient: 0.0,
+            ..Default::default()
+        })
+        .insert(Velocity::default())
+        .insert(GravityScale(10.0))
+        .insert(LockedAxes::ROTATION_LOCKED)
+        .with_children(|children| {
+            children
+                .spawn()
+                .insert(Collider::cuboid(25.0, 30.0))
+                .insert(CollisionGroups::new(
+                    PLAYER_COLLISION_GROUP,
+                    OTHER_COLLISION_GROUP,
+                ))
+                .insert_bundle(TransformBundle::from(Transform::from_xyz(
+                    0.0, -40.0, 0.0,
+                )));
+        })
+        // .insert(CollisionGroups::new(0b0001, 0b0010))
+        .insert(Rollback::new(rip.next_id()));
+}
+
+pub fn setup_players(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+    mut rip: ResMut<RollbackIdProvider>,
+    session: Option<ResMut<P2PSession<GGRSConfig>>>,
+    mut game_state: ResMut<GameState>,
+    mut query: Query<(Entity, &Player, &RigidBody)>,
+) {
+    // No session, skip
+    if session.is_none() {
         return;
     }
 
-    if session.is_none() {
-        info!("Session is none...");
+    // Already setup
+    if query.iter().len() >= 2 {
         return;
+    }
+
+    // Remove old players
+    for (e, p, r) in query.iter_mut() {
+        commands.entity(e).remove::<Collider>();
+        commands.entity(e).despawn();
     }
 
     let num_players = session.unwrap().num_players();
@@ -71,8 +131,8 @@ pub fn setup_players(
         let mut transform = Transform::default();
 
         match handle {
-            0 => transform = Transform::from_xyz(-100.0, 80.0, 0.0),
-            1 => transform = Transform::from_xyz(100.0, 80.0, 0.0),
+            0 => transform = Transform::from_xyz(-100.0, 80.0, 1.0),
+            1 => transform = Transform::from_xyz(100.0, 80.0, 1.0),
             _ => (),
         }
 
@@ -136,7 +196,7 @@ pub fn animate_players(
     }
 }
 
-pub fn input(
+pub fn ggrs_input(
     _handle: In<PlayerHandle>,
     keyboard_input: Res<Input<KeyCode>>,
 ) -> BoxInput {
@@ -158,7 +218,7 @@ pub fn input(
     BoxInput { inp: input }
 }
 
-pub fn move_player_system(
+pub fn ggrs_move_player_system(
     mut query: Query<
         (&Player, &mut Velocity, &mut TextureAtlasSprite),
         With<Rollback>,

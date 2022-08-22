@@ -12,7 +12,7 @@ use bytemuck::{Pod, Zeroable};
 use ggrs::{Config, PlayerType, SessionBuilder};
 use matchbox_socket::WebRtcSocket;
 
-use crate::game::{self, GameStage, GameState, ROLLBACK_DEFAULT};
+use crate::game::{self, GameStage, GameState, FPS, ROLLBACK_DEFAULT};
 use crate::player;
 
 #[repr(C)]
@@ -37,14 +37,14 @@ pub struct FrameCount {
 pub fn setup_ggrs(mut app: &mut App) {
     GGRSPlugin::<GGRSConfig>::new()
         .with_update_frequency(game::FPS as usize)
-        .with_input_system(player::input)
+        .with_input_system(player::ggrs_input)
         .register_rollback_type::<Transform>()
         .register_rollback_type::<Velocity>()
         .with_rollback_schedule(
             Schedule::default().with_stage(
                 ROLLBACK_DEFAULT,
                 SystemStage::parallel()
-                    .with_system(player::move_player_system)
+                    .with_system(player::ggrs_move_player_system)
                     .with_system(increase_frame_system),
             ),
         )
@@ -101,8 +101,8 @@ pub fn setup_session(
     // create a GGRS P2P session
     let mut session_builder = SessionBuilder::<GGRSConfig>::new()
         .with_num_players(num_players)
-        .with_max_prediction_window(12)
-        .with_fps(60 as usize)
+        .with_max_prediction_window(3)
+        .with_fps(FPS as usize)
         .expect("Invalid FPS")
         .with_input_delay(2);
 
