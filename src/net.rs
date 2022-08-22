@@ -1,6 +1,7 @@
 use bevy::{
+    pbr::ExtractedClustersPointLights,
     prelude::{
-        info, App, Commands, Component, Res, ResMut, Schedule, Stage,
+        info, App, Commands, Component, Query, Res, ResMut, Schedule, Stage,
         SystemStage, Transform,
     },
     reflect::{self, Reflect},
@@ -9,11 +10,14 @@ use bevy::{
 use bevy_ggrs::{GGRSPlugin, SessionType};
 use bevy_rapier2d::prelude::Velocity;
 use bytemuck::{Pod, Zeroable};
-use ggrs::{Config, PlayerType, SessionBuilder};
+use ggrs::{Config, NetworkStats, P2PSession, PlayerType, SessionBuilder};
 use matchbox_socket::WebRtcSocket;
 
-use crate::game::{self, GameStage, GameState, FPS, ROLLBACK_DEFAULT};
-use crate::player;
+use crate::player::{self, Player};
+use crate::{
+    debug_ui::Logger,
+    game::{self, GameStage, GameState, FPS, ROLLBACK_DEFAULT},
+};
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Pod, Zeroable)]
@@ -49,6 +53,38 @@ pub fn setup_ggrs(mut app: &mut App) {
             ),
         )
         .build(&mut app);
+
+    app.insert_resource(NetworkStats::default())
+        .add_system(update_networking_stats);
+}
+
+fn update_networking_stats(
+    mut network_status: ResMut<NetworkStats>,
+    session: Option<ResMut<P2PSession<GGRSConfig>>>,
+) {
+    if session.is_none() {
+        return;
+    }
+
+    let session = session.unwrap();
+
+    let remote_player_handles = session.remote_player_handles();
+
+    let remote_player_handle = remote_player_handles.first();
+
+    if remote_player_handle.is_none() {
+        return;
+    }
+
+    let stats = session.network_stats(*remote_player_handle.unwrap());
+
+    if stats.is_ok() {
+        let stats = stats.unwrap();
+        network_status.kbps_sent = stats.kbps_sent;
+        network_status.local_frames_behind = stats.local_frames_behind;
+        network_status.remote_frames_behind = stats.remote_frames_behind;
+        network_status.ping = stats.ping;
+    }
 }
 
 pub fn setup_socket(mut commands: Commands, mut game_state: ResMut<GameState>) {
@@ -75,6 +111,7 @@ pub fn setup_session(
     mut commands: Commands,
     mut game_state: ResMut<GameState>,
     socket: Option<ResMut<Option<WebRtcSocket>>>,
+    mut logger: ResMut<Logger>,
 ) {
     if game_state.stage != GameStage::SetupSession {
         return;
@@ -110,11 +147,7 @@ pub fn setup_session(
         .expect("Invalid FPS")
         .with_input_delay(2);
 
-    let mut handles = Vec::new();
     for (i, player_type) in socket.players().iter().enumerate() {
-        if *player_type == PlayerType::Local {
-            handles.push(i);
-        }
         session_builder = session_builder
             .add_player(player_type.clone(), i)
             .expect("Invalid player added.");

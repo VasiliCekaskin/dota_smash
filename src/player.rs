@@ -16,6 +16,7 @@ use bevy_rapier2d::prelude::{
 use ggrs::{InputStatus, P2PSession, PlayerHandle, PlayerType};
 
 use crate::{
+    debug_ui::Logger,
     game::{GameStage, GameState},
     net::{BoxInput, GGRSConfig},
 };
@@ -44,6 +45,7 @@ pub fn setup_lobby_player(
     asset_server: Res<AssetServer>,
     mut texture_atlases: ResMut<Assets<TextureAtlas>>,
     mut game_state: ResMut<GameState>,
+    mut logger: ResMut<Logger>,
 ) {
     // We are not in the stage to setup a lobby player, go on...
     if game_state.stage != GameStage::SetupLobbyPlayer {
@@ -91,6 +93,8 @@ pub fn setup_lobby_player(
                 )));
         });
 
+    logger.info("Local Player initialized!".to_string());
+
     game_state.stage = GameStage::SetupSocket;
 }
 
@@ -128,6 +132,7 @@ pub fn setup_gameplay_players(
     session: Option<ResMut<P2PSession<GGRSConfig>>>,
     mut game_state: ResMut<GameState>,
     mut query: Query<(Entity, &Player, &RigidBody)>,
+    mut logger: ResMut<Logger>,
 ) {
     if game_state.stage != GameStage::SetupGameplayPlayers {
         return;
@@ -149,7 +154,10 @@ pub fn setup_gameplay_players(
         commands.entity(e).despawn();
     }
 
-    let num_players = session.unwrap().num_players();
+    let session = session.unwrap();
+    let num_players = session.num_players();
+
+    logger.info("Sessions collected, initializing remote players.".to_string());
 
     for handle in 0..num_players {
         let texture_handle = asset_server.load("venomancer_idle.png");
@@ -205,6 +213,8 @@ pub fn setup_gameplay_players(
             // .insert(CollisionGroups::new(0b0001, 0b0010))
             .insert(Rollback::new(rip.next_id()));
     }
+
+    logger.info("Remote Players initialized!".to_string());
 
     game_state.stage = GameStage::Gameplay;
 }

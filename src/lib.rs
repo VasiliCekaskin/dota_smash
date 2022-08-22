@@ -5,7 +5,9 @@ use bevy::prelude::{App, Commands};
 use bevy::window::WindowDescriptor;
 use bevy::DefaultPlugins;
 
+mod debug_ui;
 mod game;
+mod menu;
 mod net;
 mod player;
 
@@ -32,9 +34,11 @@ pub fn app() -> App {
     })
     .insert_resource(net::FrameCount { frame: 0 })
     .add_plugins(DefaultPlugins)
+    .add_plugin(debug_ui::DebugUiPlugin)
     .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
     .add_plugin(RapierDebugRenderPlugin::default())
     .add_plugin(GamePlugin)
+    // .add_plugin(menu::MenuPlugin)
     // .add_startup_system(net::setup_socket)
     // .add_system(net::setup_session)
     .run();
