@@ -1,23 +1,24 @@
 use bevy::{
-    pbr::ExtractedClustersPointLights,
     prelude::{
-        info, App, Commands, Component, Query, Res, ResMut, Schedule, Stage,
-        SystemStage, Transform,
+        info, App, Commands, Component, ResMut, Schedule, SystemStage,
+        Transform,
     },
-    reflect::{self, Reflect},
+    reflect::Reflect,
     tasks::IoTaskPool,
 };
 use bevy_ggrs::{GGRSPlugin, SessionType};
 use bevy_rapier2d::prelude::Velocity;
 use bytemuck::{Pod, Zeroable};
-use ggrs::{Config, NetworkStats, P2PSession, PlayerType, SessionBuilder};
+use ggrs::{Config, NetworkStats, P2PSession, SessionBuilder};
 use matchbox_socket::WebRtcSocket;
 
-use crate::player::{self, Player};
 use crate::{
     debug_ui::Logger,
-    game::{self, GameStage, GameState, FPS, ROLLBACK_DEFAULT},
+    game::{self, Fireball, GameStage, GameState, FPS, ROLLBACK_DEFAULT},
+    player::{self, Player},
 };
+
+const ROOM_URL: &str = "ws://192.168.2.170:3536/next_2";
 
 #[repr(C)]
 #[derive(Copy, Clone, PartialEq, Pod, Zeroable)]
@@ -47,7 +48,9 @@ pub fn setup_ggrs(mut app: &mut App) {
         .with_update_frequency(game::FPS as usize)
         .with_input_system(player::ggrs_input)
         .register_rollback_type::<Transform>()
-        // .register_rollback_type::<Velocity>()
+        .register_rollback_type::<Velocity>()
+        .register_rollback_type::<Player>()
+        .register_rollback_type::<Fireball>()
         .register_rollback_type::<FrameCount>()
         .with_rollback_schedule(
             Schedule::default().with_stage(
@@ -94,11 +97,9 @@ pub fn setup_socket(mut commands: Commands, mut game_state: ResMut<GameState>) {
         return; // Nothing to do we are not in the init phase
     }
 
-    let room_url = "ws://192.168.2.170:3536/next_2";
+    info!("Connecting to matchbox server: {:?}", ROOM_URL);
 
-    info!("Connecting to matchbox server: {:?}", room_url);
-
-    let (socket, message_loop) = WebRtcSocket::new(room_url);
+    let (socket, message_loop) = WebRtcSocket::new(ROOM_URL);
 
     // The message loop needs to be awaited, or nothing will happen.
     // We do this here using bevy's task system.
