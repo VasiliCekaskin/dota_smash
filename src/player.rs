@@ -4,6 +4,7 @@ use bevy::{
         DerefMut, Entity, Handle, Image, In, Input, KeyCode, Plugin, Query,
         Res, ResMut, Transform, Vec2, Vec3, With,
     },
+    reflect::Reflect,
     sprite::{
         Sprite, SpriteBundle, SpriteSheetBundle, TextureAtlas,
         TextureAtlasSprite,
@@ -12,6 +13,7 @@ use bevy::{
     transform::TransformBundle,
 };
 use bevy_ggrs::{Rollback, RollbackIdProvider};
+use bevy_inspector_egui::Inspectable;
 use bevy_rapier2d::prelude::{
     Collider, CollisionGroups, Friction, GravityScale, LockedAxes, RigidBody,
     SolverGroups, Velocity,
@@ -39,7 +41,7 @@ const OTHER_COLLISION_GROUP: u32 = 0b10;
 #[derive(Component, Deref, DerefMut)]
 pub struct AnimationTimer(Timer);
 
-#[derive(Component)]
+#[derive(Component, Reflect, Inspectable)]
 pub struct Player {
     pub handle: usize,
 }

@@ -47,7 +47,7 @@ pub fn setup_ggrs(mut app: &mut App) {
         .with_update_frequency(game::FPS as usize)
         .with_input_system(player::ggrs_input)
         .register_rollback_type::<Transform>()
-        .register_rollback_type::<Velocity>()
+        // .register_rollback_type::<Velocity>()
         .register_rollback_type::<FrameCount>()
         .with_rollback_schedule(
             Schedule::default().with_stage(

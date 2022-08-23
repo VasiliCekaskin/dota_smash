@@ -11,8 +11,12 @@ mod menu;
 mod net;
 mod player;
 
+use bevy_inspector_egui::{
+    InspectorPlugin, RegisterInspectable, WorldInspectorPlugin,
+};
 use bevy_rapier2d::prelude::*;
 use game::GamePlugin;
+use player::Player;
 
 const WINDOW_WIDTH: f32 = 1920.0;
 const WINDOW_HEIGHT: f32 = 1080.0;
@@ -34,6 +38,10 @@ pub fn app() -> App {
     })
     .add_plugins(DefaultPlugins)
     .add_plugin(debug_ui::DebugUiPlugin)
+    .add_plugin(WorldInspectorPlugin::new())
+    .register_inspectable::<Player>()
+    .add_plugin(FrameTimeDiagnosticsPlugin::default())
+    .add_plugin(LogDiagnosticsPlugin::default())
     .add_plugin(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(1.0))
     .add_plugin(RapierDebugRenderPlugin::default())
     .add_plugin(GamePlugin)
