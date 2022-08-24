@@ -18,17 +18,28 @@ fn ui(
     mut egui_ctx: ResMut<EguiContext>,
 ) {
     let mut online_button_clicked = false;
+    let mut start_game_button_clicked = false;
 
     egui::CentralPanel::default().show(egui_ctx.ctx_mut(), |ui| {
         ui.vertical_centered(|ui| {
             ui.add_space(420.0);
             ui.heading("Online lobby");
 
+            let mut num_players = 0;
+
             if session.is_some() {
                 let sess = session.unwrap();
 
+                for i in sess.local_player_handles().iter() {
+                    num_players += 1;
+                    ui.label("You: ".to_owned() + i.to_string().as_str());
+                }
+
                 for i in sess.remote_player_handles().iter() {
-                    ui.label("Player: ".to_owned() + i.to_string().as_str());
+                    num_players += 2;
+                    ui.label(
+                        "Remote Player: ".to_owned() + i.to_string().as_str(),
+                    );
                 }
             }
 
@@ -38,7 +49,17 @@ fn ui(
                     egui::Vec2::new(100.0, 20.0),
                     egui::Button::new("Go back..."),
                 )
-                .clicked()
+                .clicked();
+
+            if num_players >= 2 {
+                ui.add_space(20.0);
+                start_game_button_clicked = ui
+                    .add_sized(
+                        egui::Vec2::new(100.0, 20.0),
+                        egui::Button::new("Start Game!"),
+                    )
+                    .clicked()
+            }
         });
     });
 

@@ -85,6 +85,11 @@ fn ggrs_input_system(
     BoxInput { inp: input }
 }
 
+// fn cleanup_network_state(mut commands: Commands) {
+//     commands.remove_resource::<P2PSession<GGRSConfig>>();
+//     commands.remove_resource::<Option<WebRtcSocket>>();
+// }
+
 fn setup_socket(mut commands: Commands) {
     info!("Connecting to matchbox server: {:?}", ROOM_URL);
 
