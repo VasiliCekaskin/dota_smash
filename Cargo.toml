@@ -31,3 +31,4 @@ bevy_ggrs = "0.10.0"
 matchbox_socket = { git = "https://github.com/johanhelsing/matchbox", features = ["ggrs-socket"] }
 bytemuck = "*"
 bevy-inspector-egui = { git = "https://github.com/jakobhellermann/bevy-inspector-egui" }
+iyes_loopless = "0.7.1"
